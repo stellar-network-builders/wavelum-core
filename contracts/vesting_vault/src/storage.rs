@@ -1,5 +1,10 @@
-use soroban_sdk::{Env, Vec, Address, Map, BytesN};
-use crate::types::{ClaimEvent, AuthorizedPayoutAddress, AddressWhitelistRequest, Nullifier, Commitment, PathPaymentConfig, PathPaymentClaimEvent, LockupConfig, BeneficiaryReassignment, VetoVote, TokenSupplyInfo, LSTConfig, TvlCapConfig, RateLimitConfig, RelayerConfig, ConfidentialGrant, MasterViewingKey, StreamPause, MasterSchedule};
+use crate::types::{
+    AddressWhitelistRequest, AuthorizedPayoutAddress, BeneficiaryReassignment, ClaimEvent,
+    Commitment, ConfidentialGrant, LSTConfig, LockupConfig, MasterSchedule, MasterViewingKey,
+    Nullifier, PathPaymentClaimEvent, PathPaymentConfig, RateLimitConfig, RelayerConfig,
+    StreamPause, TokenSupplyInfo, TvlCapConfig, VetoVote,
+};
+use soroban_sdk::{Address, BytesN, Env, Map, Vec};
 
 pub const CLAIM_HISTORY: &str = "CLAIM_HISTORY";
 pub const AUTHORIZED_PAYOUT_ADDRESS: &str = "AUTHORIZED_PAYOUT_ADDRESS";
@@ -61,33 +66,40 @@ const TIMELOCK_DURATION: u64 = 172_800;
 const EMERGENCY_PAUSE_DURATION: u64 = 604_800;
 
 pub fn get_claim_history(e: &Env) -> Vec<ClaimEvent> {
-    e.storage()
-        .instance()
-        .get(&CLAIM_HISTORY)
-        .unwrap_or(Vec::new(e))
+    e.storage().instance().get(&CLAIM_HISTORY).unwrap_or(Vec::new(e))
 }
 
 pub fn set_claim_history(e: &Env, history: &Vec<ClaimEvent>) {
     e.storage().instance().set(&CLAIM_HISTORY, history);
 }
 
-pub fn get_authorized_payout_address(e: &Env, beneficiary: &Address) -> Option<AuthorizedPayoutAddress> {
-    e.storage()
-        .instance()
-        .get(&(AUTHORIZED_PAYOUT_ADDRESS, beneficiary))
+pub fn get_authorized_payout_address(
+    e: &Env,
+    beneficiary: &Address,
+) -> Option<AuthorizedPayoutAddress> {
+    e.storage().instance().get(&(AUTHORIZED_PAYOUT_ADDRESS, beneficiary))
 }
 
-pub fn set_authorized_payout_address(e: &Env, beneficiary: &Address, auth_address: &AuthorizedPayoutAddress) {
+pub fn set_authorized_payout_address(
+    e: &Env,
+    beneficiary: &Address,
+    auth_address: &AuthorizedPayoutAddress,
+) {
     e.storage().instance().set(&(AUTHORIZED_PAYOUT_ADDRESS, beneficiary), auth_address);
 }
 
-pub fn get_pending_address_request(e: &Env, beneficiary: &Address) -> Option<AddressWhitelistRequest> {
-    e.storage()
-        .instance()
-        .get(& (PENDING_ADDRESS_REQUEST, beneficiary))
+pub fn get_pending_address_request(
+    e: &Env,
+    beneficiary: &Address,
+) -> Option<AddressWhitelistRequest> {
+    e.storage().instance().get(&(PENDING_ADDRESS_REQUEST, beneficiary))
 }
 
-pub fn set_pending_address_request(e: &Env, beneficiary: &Address, request: &AddressWhitelistRequest) {
+pub fn set_pending_address_request(
+    e: &Env,
+    beneficiary: &Address,
+    request: &AddressWhitelistRequest,
+) {
     e.storage().instance().set(&(PENDING_ADDRESS_REQUEST, beneficiary), request);
 }
 
@@ -101,10 +113,7 @@ pub fn get_timelock_duration() -> u64 {
 
 // Emergency pause functions
 pub fn get_auditors(e: &Env) -> Vec<Address> {
-    e.storage()
-        .instance()
-        .get(&AUDITORS)
-        .unwrap_or(Vec::new(e))
+    e.storage().instance().get(&AUDITORS).unwrap_or(Vec::new(e))
 }
 
 pub fn set_auditors(e: &Env, auditors: &Vec<Address>) {
@@ -112,13 +121,13 @@ pub fn set_auditors(e: &Env, auditors: &Vec<Address>) {
 }
 
 pub fn get_auditor_pause_requests(e: &Env) -> Map<Address, crate::emergency::AuditorPauseRequest> {
-    e.storage()
-        .instance()
-        .get(&AUDITOR_PAUSE_REQUESTS)
-        .unwrap_or(Map::new(e))
+    e.storage().instance().get(&AUDITOR_PAUSE_REQUESTS).unwrap_or(Map::new(e))
 }
 
-pub fn set_auditor_pause_requests(e: &Env, requests: &Map<Address, crate::emergency::AuditorPauseRequest>) {
+pub fn set_auditor_pause_requests(
+    e: &Env,
+    requests: &Map<Address, crate::emergency::AuditorPauseRequest>,
+) {
     e.storage().instance().set(&AUDITOR_PAUSE_REQUESTS, requests);
 }
 
@@ -144,10 +153,7 @@ pub fn set_reputation_bridge_contract(e: &Env, contract_address: &Address) {
 }
 
 pub fn has_reputation_bonus_applied(e: &Env, beneficiary: &Address) -> bool {
-    e.storage()
-        .instance()
-        .get(&(REPUTATION_BONUS_APPLIED, beneficiary))
-        .unwrap_or(false)
+    e.storage().instance().get(&(REPUTATION_BONUS_APPLIED, beneficiary)).unwrap_or(false)
 }
 
 pub fn set_reputation_bonus_applied(e: &Env, beneficiary: &Address) {
@@ -164,10 +170,7 @@ pub fn set_milestone_configs(e: &Env, vesting_id: u32, milestones: &Vec<u32>) {
 }
 
 pub fn get_milestone_status(e: &Env, vesting_id: u32) -> Map<u32, bool> {
-    e.storage()
-        .instance()
-        .get(&(MILESTONE_STATUS, vesting_id))
-        .unwrap_or(Map::new(e))
+    e.storage().instance().get(&(MILESTONE_STATUS, vesting_id)).unwrap_or(Map::new(e))
 }
 
 pub fn set_milestone_status(e: &Env, vesting_id: u32, status: &Map<u32, bool>) {
@@ -182,10 +185,7 @@ pub fn get_emergency_pause_duration() -> u64 {
 
 // Nullifier map functions - prevent double-spending in private claims
 pub fn is_nullifier_used(e: &Env, nullifier: &Nullifier) -> bool {
-    e.storage()
-        .instance()
-        .get(&(NULLIFIER_MAP, nullifier.clone()))
-        .unwrap_or(false)
+    e.storage().instance().get(&(NULLIFIER_MAP, nullifier.clone())).unwrap_or(false)
 }
 
 pub fn set_nullifier_used(e: &Env, nullifier: &Nullifier) {
@@ -210,10 +210,7 @@ pub fn mark_commitment_used(e: &Env, commitment_hash: &BytesN<32>) {
 
 // Privacy claim history functions
 pub fn get_privacy_claim_history(e: &Env) -> Vec<crate::types::PrivacyClaimEvent> {
-    e.storage()
-        .instance()
-        .get(&PRIVACY_CLAIM_HISTORY)
-        .unwrap_or(Vec::new(e))
+    e.storage().instance().get(&PRIVACY_CLAIM_HISTORY).unwrap_or(Vec::new(e))
 }
 
 pub fn add_privacy_claim_event(e: &Env, event: &crate::types::PrivacyClaimEvent) {
@@ -230,10 +227,7 @@ pub fn add_merkle_root(e: &Env, merkle_root: &BytesN<32>) {
 }
 
 pub fn get_merkle_roots(e: &Env) -> Vec<BytesN<32>> {
-    e.storage()
-        .instance()
-        .get(&MERKLE_ROOTS)
-        .unwrap_or(Vec::new(e))
+    e.storage().instance().get(&MERKLE_ROOTS).unwrap_or(Vec::new(e))
 }
 
 pub fn is_valid_merkle_root(e: &Env, merkle_root: &BytesN<32>) -> bool {
@@ -251,10 +245,7 @@ pub fn set_path_payment_config(e: &Env, config: &PathPaymentConfig) {
 }
 
 pub fn get_path_payment_claim_history(e: &Env) -> Vec<PathPaymentClaimEvent> {
-    e.storage()
-        .instance()
-        .get(&PATH_PAYMENT_CLAIM_HISTORY)
-        .unwrap_or(Vec::new(e))
+    e.storage().instance().get(&PATH_PAYMENT_CLAIM_HISTORY).unwrap_or(Vec::new(e))
 }
 
 pub fn add_path_payment_claim_event(e: &Env, event: &PathPaymentClaimEvent) {
@@ -289,34 +280,37 @@ pub fn set_tax_config(e: &Env, vesting_id: u32, cfg: &crate::types::TaxConfig) {
 }
 
 pub fn get_cumulative_taxes(e: &Env, vesting_id: u32, authority: &Address) -> i128 {
-    e.storage()
-        .instance()
-        .get(&(CUMULATIVE_TAXES, vesting_id, authority.clone()))
-        .unwrap_or(0i128)
+    e.storage().instance().get(&(CUMULATIVE_TAXES, vesting_id, authority.clone())).unwrap_or(0i128)
 }
 
 pub fn add_cumulative_taxes(e: &Env, vesting_id: u32, authority: &Address, amount: i128) {
     let prev = get_cumulative_taxes(e, vesting_id, authority);
-    e.storage().instance().set(&(CUMULATIVE_TAXES, vesting_id, authority.clone()), &(prev + amount));
+    e.storage()
+        .instance()
+        .set(&(CUMULATIVE_TAXES, vesting_id, authority.clone()), &(prev + amount));
 }
 
 // Beneficiary reassignment and governance veto storage functions
 pub fn get_reassignment_counter(e: &Env) -> u32 {
-    e.storage()
-        .instance()
-        .get(&REASSIGNMENT_COUNTER)
-        .unwrap_or(0)
+    e.storage().instance().get(&REASSIGNMENT_COUNTER).unwrap_or(0)
 }
 
 pub fn set_reassignment_counter(e: &Env, counter: u32) {
     e.storage().instance().set(&REASSIGNMENT_COUNTER, &counter);
 }
 
-pub fn get_beneficiary_reassignment(e: &Env, reassignment_id: u32) -> Option<BeneficiaryReassignment> {
+pub fn get_beneficiary_reassignment(
+    e: &Env,
+    reassignment_id: u32,
+) -> Option<BeneficiaryReassignment> {
     e.storage().instance().get(&(BENEFICIARY_REASSIGNMENTS, reassignment_id))
 }
 
-pub fn set_beneficiary_reassignment(e: &Env, reassignment_id: u32, reassignment: &BeneficiaryReassignment) {
+pub fn set_beneficiary_reassignment(
+    e: &Env,
+    reassignment_id: u32,
+    reassignment: &BeneficiaryReassignment,
+) {
     e.storage().instance().set(&(BENEFICIARY_REASSIGNMENTS, reassignment_id), reassignment);
 }
 
@@ -325,10 +319,7 @@ pub fn remove_beneficiary_reassignment(e: &Env, reassignment_id: u32) {
 }
 
 pub fn get_veto_votes(e: &Env, reassignment_id: u32) -> Vec<VetoVote> {
-    e.storage()
-        .instance()
-        .get(&(VETO_VOTES, reassignment_id))
-        .unwrap_or(Vec::new(e))
+    e.storage().instance().get(&(VETO_VOTES, reassignment_id)).unwrap_or(Vec::new(e))
 }
 
 pub fn set_veto_votes(e: &Env, reassignment_id: u32, votes: &Vec<VetoVote>) {
@@ -345,10 +336,7 @@ pub fn get_token_supply_info(e: &Env) -> TokenSupplyInfo {
     e.storage()
         .instance()
         .get(&TOKEN_SUPPLY_INFO)
-        .unwrap_or(TokenSupplyInfo {
-            total_supply: 0,
-            last_updated: 0,
-        })
+        .unwrap_or(TokenSupplyInfo { total_supply: 0, last_updated: 0 })
 }
 
 pub fn set_token_supply_info(e: &Env, supply_info: &TokenSupplyInfo) {
@@ -356,10 +344,7 @@ pub fn set_token_supply_info(e: &Env, supply_info: &TokenSupplyInfo) {
 }
 
 pub fn get_governance_veto_threshold(e: &Env) -> u32 {
-    e.storage()
-        .instance()
-        .get(&GOVERNANCE_VETO_THRESHOLD)
-        .unwrap_or(5) // Default 5% threshold
+    e.storage().instance().get(&GOVERNANCE_VETO_THRESHOLD).unwrap_or(5) // Default 5% threshold
 }
 
 pub fn set_governance_veto_threshold(e: &Env, threshold: u32) {
@@ -430,10 +415,7 @@ pub fn get_vesting_grant(e: &Env, vesting_id: u32) -> Option<crate::types::Vesti
 pub const TOTAL_UNVESTED_BALANCE: &str = "TOTAL_UNVESTED_BALANCE";
 
 pub fn get_unvested_balance(e: &Env, address: &Address) -> i128 {
-    e.storage()
-        .instance()
-        .get(&(TOTAL_UNVESTED_BALANCE, address))
-        .unwrap_or(0i128)
+    e.storage().instance().get(&(TOTAL_UNVESTED_BALANCE, address)).unwrap_or(0i128)
 }
 
 pub fn set_unvested_balance(e: &Env, address: &Address, balance: i128) {
@@ -466,10 +448,7 @@ pub fn set_oracle_price_record(e: &Env, record: &crate::types::OraclePriceRecord
 pub const CONTRACT_TOTAL_UNVESTED: &str = "CONTRACT_TOTAL_UNVESTED";
 
 pub fn get_contract_total_unvested(e: &Env) -> i128 {
-    e.storage()
-        .instance()
-        .get(&CONTRACT_TOTAL_UNVESTED)
-        .unwrap_or(0i128)
+    e.storage().instance().get(&CONTRACT_TOTAL_UNVESTED).unwrap_or(0i128)
 }
 
 pub fn set_contract_total_unvested(e: &Env, total: i128) {
@@ -520,10 +499,7 @@ pub fn remove_master_viewing_key(e: &Env) {
 
 // Nullifier set in Persistent storage (for permanent tracking)
 pub fn is_nullifier_in_set(e: &Env, nullifier_hash: &BytesN<32>) -> bool {
-    e.storage()
-        .persistent()
-        .get(&(NULLIFIER_SET, nullifier_hash))
-        .unwrap_or(false)
+    e.storage().persistent().get(&(NULLIFIER_SET, nullifier_hash)).unwrap_or(false)
 }
 
 pub fn add_nullifier_to_set(e: &Env, nullifier_hash: &BytesN<32>) {
@@ -532,21 +508,15 @@ pub fn add_nullifier_to_set(e: &Env, nullifier_hash: &BytesN<32>) {
 
 // Stream pause functions for suspicious activity detection
 pub fn get_stream_pause(e: &Env, vesting_id: u32, beneficiary: &Address) -> Option<StreamPause> {
-    e.storage()
-        .instance()
-        .get(&(STREAM_PAUSES, vesting_id, beneficiary))
+    e.storage().instance().get(&(STREAM_PAUSES, vesting_id, beneficiary))
 }
 
 pub fn set_stream_pause(e: &Env, vesting_id: u32, beneficiary: &Address, pause: &StreamPause) {
-    e.storage()
-        .instance()
-        .set(&(STREAM_PAUSES, vesting_id, beneficiary), pause);
+    e.storage().instance().set(&(STREAM_PAUSES, vesting_id, beneficiary), pause);
 }
 
 pub fn remove_stream_pause(e: &Env, vesting_id: u32, beneficiary: &Address) {
-    e.storage()
-        .instance()
-        .remove(&(STREAM_PAUSES, vesting_id, beneficiary));
+    e.storage().instance().remove(&(STREAM_PAUSES, vesting_id, beneficiary));
 }
 
 pub fn is_stream_paused(e: &Env, vesting_id: u32, beneficiary: &Address) -> bool {
@@ -557,10 +527,7 @@ pub fn is_stream_paused(e: &Env, vesting_id: u32, beneficiary: &Address) -> bool
 }
 
 pub fn get_stream_pause_history(e: &Env) -> Vec<StreamPause> {
-    e.storage()
-        .instance()
-        .get(&STREAM_PAUSE_HISTORY)
-        .unwrap_or(Vec::new(e))
+    e.storage().instance().get(&STREAM_PAUSE_HISTORY).unwrap_or(Vec::new(e))
 }
 
 pub fn add_stream_pause_to_history(e: &Env, pause: &StreamPause) {
@@ -588,10 +555,7 @@ pub fn remove_master_schedule(e: &Env, master_id: u32) {
 
 /// Check if a schedule has been merged
 pub fn is_schedule_merged(e: &Env, schedule_id: u32) -> bool {
-    e.storage()
-        .instance()
-        .get(&(crate::types::MERGED_SCHEDULES, schedule_id))
-        .unwrap_or(false)
+    e.storage().instance().get(&(crate::types::MERGED_SCHEDULES, schedule_id)).unwrap_or(false)
 }
 
 /// Mark a schedule as merged
@@ -601,11 +565,7 @@ pub fn mark_schedule_merged(e: &Env, schedule_id: u32) {
 
 /// Get next available master schedule ID
 pub fn get_next_master_schedule_id(e: &Env) -> u32 {
-    let current_id = e
-        .storage()
-        .instance()
-        .get(&("MASTER_SCHEDULE_COUNTER"))
-        .unwrap_or(0u32);
+    let current_id = e.storage().instance().get(&("MASTER_SCHEDULE_COUNTER")).unwrap_or(0u32);
     let next_id = current_id + 1;
     e.storage().instance().set(&("MASTER_SCHEDULE_COUNTER"), &next_id);
     next_id

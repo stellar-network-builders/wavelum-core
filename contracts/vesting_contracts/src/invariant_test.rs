@@ -55,10 +55,7 @@ pub struct MockOracle;
 impl MockOracle {
     /// The vesting contract will call this.
     pub fn is_cliff_passed(env: Env, _cliff: PerformanceCliff, _vault_id: u64) -> bool {
-        env.storage()
-            .instance()
-            .get(&symbol_short!("passed"))
-            .unwrap_or(false)
+        env.storage().instance().get(&symbol_short!("passed")).unwrap_or(false)
     }
 
     /// Test helper to control the mock's return value.

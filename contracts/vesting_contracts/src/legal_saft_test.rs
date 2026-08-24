@@ -1,19 +1,12 @@
 #![cfg(test)]
-use soroban_sdk::{
-    Address,
-    Bytes,
-    BytesN,
-    Env,
-    Vec,
-};
 use crate::{
     legal_saft::{
-        LegalSAFTManager, LegalDocument, DocumentSignature, VaultLegalDocuments,
-        DocumentType, LegalSAFTError,
-        LEGAL_DOCUMENTS, DOCUMENT_SIGNATURES, VAULT_LEGAL_DOCS,
+        DocumentSignature, DocumentType, LegalDocument, LegalSAFTError, LegalSAFTManager,
+        VaultLegalDocuments, DOCUMENT_SIGNATURES, LEGAL_DOCUMENTS, VAULT_LEGAL_DOCS,
     },
-    testutils::{create_test_contract, create_test_address, create_test_env},
+    testutils::{create_test_address, create_test_contract, create_test_env},
 };
+use soroban_sdk::{Address, Bytes, BytesN, Env, Vec};
 
 #[test]
 fn test_store_legal_document_success() {
@@ -96,7 +89,8 @@ fn test_sign_legal_document_success() {
         "US".to_string(),
         "1.0".to_string(),
         None,
-    ).unwrap();
+    )
+    .unwrap();
 
     // Sign the document
     let signature = Bytes::from_array(&[0x01, 0x02, 0x03]);
@@ -114,11 +108,9 @@ fn test_sign_legal_document_success() {
     assert!(result.is_ok());
 
     // Verify signature was stored
-    let stored_sig = LegalSAFTManager::get_document_signature(
-        &env,
-        beneficiary.clone(),
-        document_hash.clone()
-    ).unwrap();
+    let stored_sig =
+        LegalSAFTManager::get_document_signature(&env, beneficiary.clone(), document_hash.clone())
+            .unwrap();
     assert_eq!(stored_sig.beneficiary, beneficiary);
     assert_eq!(stored_sig.document_hash, document_hash);
     assert_eq!(stored_sig.signature, signature);
@@ -144,7 +136,8 @@ fn test_sign_legal_document_already_signed() {
         "US".to_string(),
         "1.0".to_string(),
         None,
-    ).unwrap();
+    )
+    .unwrap();
 
     // Sign once
     LegalSAFTManager::sign_legal_document(
@@ -154,7 +147,8 @@ fn test_sign_legal_document_already_signed() {
         document_hash.clone(),
         Bytes::from_array(&[0x01]),
         "First signature".to_string(),
-    ).unwrap();
+    )
+    .unwrap();
 
     // Try to sign again
     let result = LegalSAFTManager::sign_legal_document(
@@ -191,7 +185,8 @@ fn test_all_documents_signed_check() {
         "US".to_string(),
         "1.0".to_string(),
         None,
-    ).unwrap();
+    )
+    .unwrap();
 
     LegalSAFTManager::store_legal_hash(
         &env,
@@ -203,7 +198,8 @@ fn test_all_documents_signed_check() {
         "US".to_string(),
         "1.0".to_string(),
         None,
-    ).unwrap();
+    )
+    .unwrap();
 
     // Initially not all signed
     assert!(!LegalSAFTManager::are_all_documents_signed(&env, vault_id));
@@ -216,7 +212,8 @@ fn test_all_documents_signed_check() {
         doc1_hash.clone(),
         Bytes::from_array(&[0x01]),
         "Signed SAFT".to_string(),
-    ).unwrap();
+    )
+    .unwrap();
 
     // Still not all signed
     assert!(!LegalSAFTManager::are_all_documents_signed(&env, vault_id));
@@ -229,7 +226,8 @@ fn test_all_documents_signed_check() {
         doc2_hash,
         Bytes::from_array(&[0x02]),
         "Signed Grant".to_string(),
-    ).unwrap();
+    )
+    .unwrap();
 
     // Now all should be signed
     assert!(LegalSAFTManager::are_all_documents_signed(&env, vault_id));
@@ -257,7 +255,8 @@ fn test_vault_legal_documents_status() {
         "US".to_string(),
         "1.0".to_string(),
         None,
-    ).unwrap();
+    )
+    .unwrap();
 
     // Check status
     let status = LegalSAFTManager::get_vault_legal_documents(&env, vault_id).unwrap();
@@ -286,16 +285,13 @@ fn test_revoke_legal_document() {
         "US".to_string(),
         "1.0".to_string(),
         None,
-    ).unwrap();
+    )
+    .unwrap();
 
     // Revoke document
     let reason = "Document updated".to_string();
-    let result = LegalSAFTManager::revoke_legal_document(
-        &env,
-        admin.clone(),
-        document_hash,
-        reason.clone(),
-    );
+    let result =
+        LegalSAFTManager::revoke_legal_document(&env, admin.clone(), document_hash, reason.clone());
 
     assert!(result.is_ok());
 

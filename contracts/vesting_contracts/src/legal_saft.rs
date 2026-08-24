@@ -1,15 +1,5 @@
 #![no_std]
-use soroban_sdk::{
-    contracttype,
-    contracterror,
-    Address,
-    Env,
-    Vec,
-    Bytes,
-    BytesN,
-    Symbol,
-    String,
-};
+use soroban_sdk::{contracterror, contracttype, Address, Bytes, BytesN, Env, String, Symbol, Vec};
 
 /// Legal document anchoring errors
 #[contracterror]
@@ -33,11 +23,11 @@ pub enum LegalSAFTError {
 #[contracttype]
 #[derive(Clone, Debug, PartialEq)]
 pub enum DocumentType {
-    SAFT,           // Simple Agreement for Future Tokens
-    GrantAgreement,  // Grant Agreement
+    SAFT,              // Simple Agreement for Future Tokens
+    GrantAgreement,    // Grant Agreement
     PurchaseAgreement, // Purchase Agreement
-    TokenWarrant,    // Token Warrant
-    ConvertibleNote,  // Convertible Note
+    TokenWarrant,      // Token Warrant
+    ConvertibleNote,   // Convertible Note
 }
 
 /// Legal document metadata stored on-chain
@@ -45,24 +35,24 @@ pub enum DocumentType {
 #[contracttype]
 pub struct LegalDocument {
     pub document_type: DocumentType,
-    pub ipfs_cid: String,           // IPFS CID of the document
-    pub document_hash: BytesN<32>,   // SHA-256 hash of the document
-    pub admin_address: Address,       // Admin who anchored the document
-    pub anchored_at: u64,            // Timestamp when document was anchored
-    pub expires_at: Option<u64>,     // Optional expiry timestamp
-    pub jurisdiction: String,         // Legal jurisdiction
-    pub version: String,             // Document version
+    pub ipfs_cid: String,          // IPFS CID of the document
+    pub document_hash: BytesN<32>, // SHA-256 hash of the document
+    pub admin_address: Address,    // Admin who anchored the document
+    pub anchored_at: u64,          // Timestamp when document was anchored
+    pub expires_at: Option<u64>,   // Optional expiry timestamp
+    pub jurisdiction: String,      // Legal jurisdiction
+    pub version: String,           // Document version
 }
 
 /// Beneficiary signature for legal document
 #[derive(Clone)]
 #[contracttype]
 pub struct DocumentSignature {
-    pub beneficiary: Address,        // Beneficiary who signed
-    pub document_hash: BytesN<32>,  // Hash of the document being signed
-    pub signature: Bytes,            // Cryptographic signature
-    pub signed_at: u64,             // Timestamp when signed
-    pub message: String,             // Optional message with signature
+    pub beneficiary: Address,      // Beneficiary who signed
+    pub document_hash: BytesN<32>, // Hash of the document being signed
+    pub signature: Bytes,          // Cryptographic signature
+    pub signed_at: u64,            // Timestamp when signed
+    pub message: String,           // Optional message with signature
 }
 
 /// Vault legal document association
@@ -72,8 +62,8 @@ pub struct VaultLegalDocuments {
     pub vault_id: u64,
     pub required_documents: Vec<BytesN<32>>, // List of required document hashes
     pub signed_documents: Vec<BytesN<32>>,   // List of signed document hashes
-    pub all_documents_signed: bool,            // Whether all required documents are signed
-    pub vesting_can_start: bool,               // Whether vesting can start
+    pub all_documents_signed: bool,          // Whether all required documents are signed
+    pub vesting_can_start: bool,             // Whether vesting can start
 }
 
 /// Storage keys for legal SAFT system
@@ -136,7 +126,8 @@ impl LegalSAFTManager {
             admin,
             jurisdiction,
             version,
-        }.publish(env);
+        }
+        .publish(env);
 
         Ok(())
     }
@@ -152,9 +143,8 @@ impl LegalSAFTManager {
     ) -> Result<(), LegalSAFTError> {
         // Verify document exists
         let doc_key = (LEGAL_DOCUMENTS, document_hash.clone());
-        let document: LegalDocument = env.storage().persistent()
-            .get(&doc_key)
-            .ok_or(LegalSAFTError::DocumentNotAnchored)?;
+        let document: LegalDocument =
+            env.storage().persistent().get(&doc_key).ok_or(LegalSAFTError::DocumentNotAnchored)?;
 
         // Check if document has expired
         if let Some(expiry) = document.expires_at {
@@ -185,13 +175,7 @@ impl LegalSAFTManager {
         Self::mark_document_signed(env, vault_id, document_hash.clone())?;
 
         // Emit event
-        DocumentSigned {
-            vault_id,
-            beneficiary,
-            document_hash,
-            signature,
-            message,
-        }.publish(env);
+        DocumentSigned { vault_id, beneficiary, document_hash, signature, message }.publish(env);
 
         Ok(())
     }
@@ -199,7 +183,9 @@ impl LegalSAFTManager {
     /// Check if all required documents are signed for a vault
     pub fn are_all_documents_signed(env: &Env, vault_id: u64) -> bool {
         let vault_key = (VAULT_LEGAL_DOCS, vault_id);
-        if let Some(vault_docs) = env.storage().persistent().get::<_, VaultLegalDocuments>(&vault_key) {
+        if let Some(vault_docs) =
+            env.storage().persistent().get::<_, VaultLegalDocuments>(&vault_key)
+        {
             vault_docs.all_documents_signed && vault_docs.vesting_can_start
         } else {
             false // No legal documents required
@@ -216,7 +202,7 @@ impl LegalSAFTManager {
     pub fn get_document_signature(
         env: &Env,
         beneficiary: Address,
-        document_hash: BytesN<32>
+        document_hash: BytesN<32>,
     ) -> Option<DocumentSignature> {
         let sig_key = (DOCUMENT_SIGNATURES, beneficiary, document_hash);
         env.storage().persistent().get(&sig_key)
@@ -231,15 +217,17 @@ impl LegalSAFTManager {
     /// Get all documents for a vault
     pub fn get_vault_documents(env: &Env, vault_id: u64) -> Vec<LegalDocument> {
         let vault_key = (VAULT_LEGAL_DOCS, vault_id);
-        if let Some(vault_docs) = env.storage().persistent().get::<_, VaultLegalDocuments>(&vault_key) {
+        if let Some(vault_docs) =
+            env.storage().persistent().get::<_, VaultLegalDocuments>(&vault_key)
+        {
             let mut documents = Vec::new(env);
-            
+
             for doc_hash in vault_docs.required_documents.iter() {
                 if let Some(document) = Self::get_legal_document(env, doc_hash) {
                     documents.push_back(document);
                 }
             }
-            
+
             documents
         } else {
             Vec::new(env)
@@ -249,7 +237,7 @@ impl LegalSAFTManager {
     /// Get signed documents for a beneficiary
     pub fn get_beneficiary_signed_documents(
         env: &Env,
-        beneficiary: Address
+        beneficiary: Address,
     ) -> Vec<DocumentSignature> {
         // This is a simplified implementation
         // In production, you might want to maintain an index
@@ -264,9 +252,8 @@ impl LegalSAFTManager {
         reason: String,
     ) -> Result<(), LegalSAFTError> {
         let doc_key = (LEGAL_DOCUMENTS, document_hash.clone());
-        let mut document: LegalDocument = env.storage().persistent()
-            .get(&doc_key)
-            .ok_or(LegalSAFTError::DocumentNotAnchored)?;
+        let mut document: LegalDocument =
+            env.storage().persistent().get(&doc_key).ok_or(LegalSAFTError::DocumentNotAnchored)?;
 
         // Verify admin authorization (in production, add proper admin check)
         if document.admin_address != admin {
@@ -278,11 +265,7 @@ impl LegalSAFTManager {
         env.storage().persistent().set(&doc_key, &document);
 
         // Emit event
-        LegalDocumentRevoked {
-            document_hash,
-            admin,
-            reason,
-        }.publish(env);
+        LegalDocumentRevoked { document_hash, admin, reason }.publish(env);
 
         Ok(())
     }
@@ -295,9 +278,10 @@ impl LegalSAFTManager {
         document_hash: BytesN<32>,
     ) -> Result<(), LegalSAFTError> {
         let vault_key = (VAULT_LEGAL_DOCS, vault_id);
-        
-        let mut vault_docs = if let Some(existing) = env.storage().persistent()
-            .get::<_, VaultLegalDocuments>(&vault_key) {
+
+        let mut vault_docs = if let Some(existing) =
+            env.storage().persistent().get::<_, VaultLegalDocuments>(&vault_key)
+        {
             existing
         } else {
             VaultLegalDocuments {
@@ -328,8 +312,10 @@ impl LegalSAFTManager {
         document_hash: BytesN<32>,
     ) -> Result<(), LegalSAFTError> {
         let vault_key = (VAULT_LEGAL_DOCS, vault_id);
-        
-        let mut vault_docs = env.storage().persistent()
+
+        let mut vault_docs = env
+            .storage()
+            .persistent()
             .get::<_, VaultLegalDocuments>(&vault_key)
             .ok_or(LegalSAFTError::VaultNotInitialized)?;
 
@@ -353,7 +339,8 @@ impl LegalSAFTManager {
             AllDocumentsSigned {
                 vault_id,
                 beneficiary: env.current_contract_address(), // This would be the vault owner
-            }.publish(env);
+            }
+            .publish(env);
         }
 
         Ok(())

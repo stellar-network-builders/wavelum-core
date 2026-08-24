@@ -1,15 +1,9 @@
 #![no_std]
 // Safety lint attributes for smart contract
 #![deny(unsafe_code)]
-#![warn(
-    missing_docs,
-    missing_debug_implementations,
-    unused_results,
-    clippy::all,
-    clippy::pedantic
-)]
+#![warn(missing_docs, missing_debug_implementations, unused_results, clippy::all, clippy::pedantic)]
 
-use soroban_sdk::{contract, contractimpl, contracttype, contractevent, Address, Env, String};
+use soroban_sdk::{contract, contractevent, contractimpl, contracttype, Address, Env, String};
 
 mod vesting_contract {
     soroban_sdk::contractimport!(
@@ -45,8 +39,9 @@ impl VestingStatusNFT {
     }
 
     pub fn mint(env: Env, user: Address) {
-        let vesting_addr: Address = env.storage().instance().get(&DataKey::VestingContract).expect("Not initialized");
-        
+        let vesting_addr: Address =
+            env.storage().instance().get(&DataKey::VestingContract).expect("Not initialized");
+
         // Only the vesting contract itself should be able to trigger a mint (automated trigger)
         vesting_addr.require_auth();
 
@@ -55,15 +50,16 @@ impl VestingStatusNFT {
         }
 
         env.storage().instance().set(&DataKey::UserBadge(user.clone()), &true);
-        
+
         // Emit event for minting
         MintEvent { user }.publish(&env);
     }
 
     pub fn get_level(env: Env, user: Address) -> u32 {
-        let vesting_addr: Address = env.storage().instance().get(&DataKey::VestingContract).expect("Not initialized");
+        let vesting_addr: Address =
+            env.storage().instance().get(&DataKey::VestingContract).expect("Not initialized");
         let client = vesting_contract::Client::new(&env, &vesting_addr);
-        
+
         let vault_ids = client.get_user_vaults(&user);
         if vault_ids.is_empty() {
             return 0;
@@ -73,7 +69,8 @@ impl VestingStatusNFT {
         let mut total_released: i128 = 0;
 
         for id in vault_ids.iter() {
-            let (vault_total, vault_released, _claimable, _count) = client.get_vault_statistics(&id);
+            let (vault_total, vault_released, _claimable, _count) =
+                client.get_vault_statistics(&id);
             total_amount += vault_total;
             total_released += vault_released;
         }

@@ -1,4 +1,4 @@
-use soroban_sdk::{contracttype, contractevent, Address, Vec, String};
+use soroban_sdk::{contractevent, contracttype, Address, String, Vec};
 
 #[contracttype]
 pub struct EmergencyConfig {

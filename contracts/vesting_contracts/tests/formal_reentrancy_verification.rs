@@ -115,15 +115,11 @@ impl MaliciousToken {
     }
 
     pub fn attack_blocked(env: Env) -> bool {
-        read_attack(&env)
-            .map(|attack| attack.blocked)
-            .unwrap_or(false)
+        read_attack(&env).map(|attack| attack.blocked).unwrap_or(false)
     }
 
     pub fn callback_count(env: Env) -> u32 {
-        read_attack(&env)
-            .map(|attack| attack.callback_count)
-            .unwrap_or(0)
+        read_attack(&env).map(|attack| attack.callback_count).unwrap_or(0)
     }
 }
 
@@ -159,9 +155,7 @@ impl MaliciousStaking {
     }
 
     pub fn attack_blocked(env: Env) -> bool {
-        read_attack(&env)
-            .map(|attack| attack.blocked)
-            .unwrap_or(false)
+        read_attack(&env).map(|attack| attack.blocked).unwrap_or(false)
     }
 }
 
@@ -198,24 +192,18 @@ impl MaliciousDexHop {
     }
 
     pub fn attack_blocked(env: Env) -> bool {
-        read_attack(&env)
-            .map(|attack| attack.blocked)
-            .unwrap_or(false)
+        read_attack(&env).map(|attack| attack.blocked).unwrap_or(false)
     }
 
     pub fn callback_count(env: Env) -> u32 {
-        read_attack(&env)
-            .map(|attack| attack.callback_count)
-            .unwrap_or(0)
+        read_attack(&env).map(|attack| attack.callback_count).unwrap_or(0)
     }
 }
 
 fn setup_standard_vault(env: &Env) -> (Address, VestingContractClient<'_>, u64, Address, Address) {
     let admin = Address::generate(env);
     let token_admin = Address::generate(env);
-    let token_address = env
-        .register_stellar_asset_contract_v2(token_admin)
-        .address();
+    let token_address = env.register_stellar_asset_contract_v2(token_admin).address();
     let asset_admin = token::StellarAssetClient::new(env, &token_address);
     asset_admin.mint(&admin, &5_000);
 
@@ -326,12 +314,7 @@ fn formal_reentrancy_bmc_covers_multi_hop_path_payment_callbacks() {
     let hop_b = MaliciousDexHopClient::new(&env, &hop_b_id);
 
     let path: Vec<Address> = vec![&env, hop_a_id.clone(), hop_b_id.clone()];
-    client.configure_path_payment(
-        &Address::generate(&env),
-        &destination_token_id,
-        &900i128,
-        &path,
-    );
+    client.configure_path_payment(&Address::generate(&env), &destination_token_id, &900i128, &path);
     mark_kpi_met(&env, &contract_id, vault_id);
 
     hop_a.configure_swap(&contract_id, &vault_id, &900i128);

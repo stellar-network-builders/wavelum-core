@@ -1,14 +1,5 @@
 #![no_std]
-use soroban_sdk::{
-    contracttype,
-    contracterror,
-    Address,
-    Env,
-    Vec,
-    Bytes,
-    BytesN,
-    U256,
-};
+use soroban_sdk::{contracterror, contracttype, Address, Bytes, BytesN, Env, Vec, U256};
 
 /// ZK-SNARK verification errors
 #[contracterror]
@@ -30,10 +21,10 @@ pub enum ZKVerifierError {
 #[derive(Clone)]
 #[contracttype]
 pub struct ZKProof {
-    pub proof_data: Bytes,        // Serialized ZK-SNARK proof
-    pub public_inputs: Vec<Bytes>, // Public inputs for the circuit
-    pub nullifier: BytesN<32>,     // Nullifier to prevent double-spending
-    pub circuit_id: BytesN<32>,    // Identifier for the verification circuit
+    pub proof_data: Bytes,                 // Serialized ZK-SNARK proof
+    pub public_inputs: Vec<Bytes>,         // Public inputs for the circuit
+    pub nullifier: BytesN<32>,             // Nullifier to prevent double-spending
+    pub circuit_id: BytesN<32>,            // Identifier for the verification circuit
     pub verification_key_hash: BytesN<32>, // Hash of the verification key
 }
 
@@ -41,11 +32,11 @@ pub struct ZKProof {
 #[derive(Clone)]
 #[contracttype]
 pub struct AccreditedInvestorInputs {
-    pub jurisdiction_hash: BytesN<32>,  // Hash of jurisdiction (privacy-preserving)
+    pub jurisdiction_hash: BytesN<32>, // Hash of jurisdiction (privacy-preserving)
     pub net_worth_threshold_met: bool, // Whether net worth threshold is met
-    pub income_threshold_met: bool,     // Whether income threshold is met
+    pub income_threshold_met: bool,    // Whether income threshold is met
     pub professional_certifications: bool, // Whether professional certifications exist
-    pub timestamp: u64,                 // Proof generation timestamp
+    pub timestamp: u64,                // Proof generation timestamp
     pub expiry: u64,                   // When the accreditation proof expires
 }
 
@@ -54,7 +45,7 @@ pub struct AccreditedInvestorInputs {
 #[contracttype]
 pub struct VerificationKey {
     pub key_hash: BytesN<32>,
-    pub circuit_type: BytesN<32>,      // "accredited_investor" or other types
+    pub circuit_type: BytesN<32>, // "accredited_investor" or other types
     pub supported_jurisdictions: Vec<BytesN<32>>,
     pub created_at: u64,
     pub is_active: bool,
@@ -122,7 +113,11 @@ impl ZKVerifier {
         }
 
         // Verify jurisdiction is supported
-        if !Self::is_jurisdiction_supported(env, vk.supported_jurisdictions.clone(), inputs.jurisdiction_hash.clone()) {
+        if !Self::is_jurisdiction_supported(
+            env,
+            vk.supported_jurisdictions.clone(),
+            inputs.jurisdiction_hash.clone(),
+        ) {
             return Err(ZKVerifierError::JurisdictionNotSupported);
         }
 
@@ -204,11 +199,12 @@ impl ZKVerifier {
         env.storage().persistent().has(&key)
     }
 
-    fn get_verification_key(env: &Env, key_hash: BytesN<32>) -> Result<VerificationKey, ZKVerifierError> {
+    fn get_verification_key(
+        env: &Env,
+        key_hash: BytesN<32>,
+    ) -> Result<VerificationKey, ZKVerifierError> {
         let key = (VERIFICATION_KEYS, key_hash);
-        env.storage().persistent()
-            .get(&key)
-            .ok_or(ZKVerifierError::InvalidVerificationKey)
+        env.storage().persistent().get(&key).ok_or(ZKVerifierError::InvalidVerificationKey)
     }
 
     fn is_jurisdiction_supported(
@@ -227,22 +223,17 @@ impl ZKVerifier {
             return Err(ZKVerifierError::InvalidPublicInputs);
         }
 
-        let jurisdiction_hash = BytesN::from_array(
-            public_inputs.get(0).unwrap().to_array().try_into().unwrap()
-        );
+        let jurisdiction_hash =
+            BytesN::from_array(public_inputs.get(0).unwrap().to_array().try_into().unwrap());
         let net_worth_threshold_met = public_inputs.get(1).unwrap().to_array()[0] != 0;
         let income_threshold_met = public_inputs.get(2).unwrap().to_array()[0] != 0;
         let professional_certifications = public_inputs.get(3).unwrap().to_array()[0] != 0;
-        
+
         let timestamp_bytes = public_inputs.get(4).unwrap();
-        let timestamp = u64::from_be_bytes(
-            timestamp_bytes.to_array()[..8].try_into().unwrap()
-        );
-        
+        let timestamp = u64::from_be_bytes(timestamp_bytes.to_array()[..8].try_into().unwrap());
+
         let expiry_bytes = public_inputs.get(5).unwrap();
-        let expiry = u64::from_be_bytes(
-            expiry_bytes.to_array()[..8].try_into().unwrap()
-        );
+        let expiry = u64::from_be_bytes(expiry_bytes.to_array()[..8].try_into().unwrap());
 
         Ok(AccreditedInvestorInputs {
             jurisdiction_hash,
@@ -261,7 +252,7 @@ impl ZKVerifier {
     ) -> Result<bool, ZKVerifierError> {
         // In a real implementation, this would perform actual ZK-SNARK verification
         // For now, we'll implement a placeholder that validates the structure
-        
+
         // Check proof data is not empty
         if proof.proof_data.is_empty() {
             return Ok(false);
@@ -277,11 +268,11 @@ impl ZKVerifier {
         // 2. Deserialize the verification key
         // 3. Perform elliptic curve pairing operations
         // 4. Return the verification result
-        
+
         // For now, we'll simulate verification with a simple hash check
         let proof_hash = env.crypto().sha256(&proof.proof_data);
         let expected_hash = env.crypto().sha256(&vk.key_hash.to_array());
-        
+
         Ok(proof_hash == expected_hash)
     }
 

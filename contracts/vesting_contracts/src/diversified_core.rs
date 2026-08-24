@@ -35,17 +35,17 @@ pub fn calculate_claimable_for_asset(
 ) -> i128 {
     let allocation = vault.allocations.get(asset_index.try_into().unwrap()).unwrap();
     let now = env.ledger().timestamp();
-    
+
     if now <= vault.start_time {
         return 0;
     }
     if now >= vault.end_time {
         return allocation.total_amount;
     }
-    
+
     let duration = (vault.end_time - vault.start_time) as i128;
     let elapsed = (now - vault.start_time) as i128;
-    
+
     (allocation.total_amount * elapsed) / duration
 }
 
@@ -60,15 +60,15 @@ pub fn create_diversified_vault(
     if !validate_asset_basket(&asset_basket) {
         panic!("Asset basket percentages must sum to 10000 (100%)");
     }
-    
+
     if asset_basket.is_empty() {
         panic!("Asset basket cannot be empty");
     }
-    
+
     if start_time >= end_time {
         panic!("Start time must be before end time");
     }
-    
+
     DiversifiedVault {
         allocations: asset_basket,
         owner,
@@ -80,24 +80,21 @@ pub fn create_diversified_vault(
 }
 
 /// Claims all available tokens from a diversified vault
-pub fn claim_diversified_tokens(
-    env: &Env,
-    vault: &mut DiversifiedVault,
-) -> Vec<(Address, i128)> {
+pub fn claim_diversified_tokens(env: &Env, vault: &mut DiversifiedVault) -> Vec<(Address, i128)> {
     let mut claimed_assets = Vec::new(env);
-    
+
     for (i, allocation) in vault.allocations.iter().enumerate() {
         let vested_amount = calculate_claimable_for_asset(env, vault, i);
         let claimable_amount = vested_amount - allocation.released_amount;
-        
+
         if claimable_amount > 0 {
             let mut updated_allocation = allocation.clone();
             updated_allocation.released_amount += claimable_amount;
             vault.allocations.set(i.try_into().unwrap(), updated_allocation);
-            
+
             claimed_assets.push_back((allocation.asset_id.clone(), claimable_amount));
         }
     }
-    
+
     claimed_assets
 }

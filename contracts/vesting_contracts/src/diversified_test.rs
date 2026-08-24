@@ -6,7 +6,10 @@ mod diversified_vesting_tests {
         token, vec, Address, Env, String,
     };
 
-    fn create_token_contract<'a>(env: &Env, admin: &Address) -> (token::Client<'a>, token::StellarAssetClient<'a>) {
+    fn create_token_contract<'a>(
+        env: &Env,
+        admin: &Address,
+    ) -> (token::Client<'a>, token::StellarAssetClient<'a>) {
         let address = env.register_stellar_asset_contract_v2(admin.clone()).address();
         (token::Client::new(env, &address), token::StellarAssetClient::new(env, &address))
     }
@@ -69,10 +72,10 @@ mod diversified_vesting_tests {
             &asset_basket,
             &start_time,
             &end_time,
-            &0, // no keeper fee
+            &0,    // no keeper fee
             &true, // revocable
             &true, // transferable
-            &0, // no step duration (linear vesting)
+            &0,    // no step duration (linear vesting)
             &String::from_str(&env, "Diversified Vault"),
         );
 
@@ -94,10 +97,10 @@ mod diversified_vesting_tests {
 
         // Claim tokens
         let claimed = client.claim_tokens_diversified(&vault_id);
-        
+
         // Should have claimed 50% of each asset
         assert_eq!(claimed.len(), 3);
-        
+
         // Check balances after claim
         assert_eq!(token1.balance(&beneficiary), 500); // 50% of 1000
         assert_eq!(token2.balance(&beneficiary), 300); // 50% of 600
@@ -110,11 +113,11 @@ mod diversified_vesting_tests {
 
         // Claim remaining tokens
         let _claimed = client.claim_tokens_diversified(&vault_id);
-        
+
         // Check final balances
         assert_eq!(token1.balance(&beneficiary), 1000); // 100% of 1000
-        assert_eq!(token2.balance(&beneficiary), 600);  // 100% of 600
-        assert_eq!(token3.balance(&beneficiary), 400);  // 100% of 400
+        assert_eq!(token2.balance(&beneficiary), 600); // 100% of 600
+        assert_eq!(token3.balance(&beneficiary), 400); // 100% of 400
     }
 
     #[test]

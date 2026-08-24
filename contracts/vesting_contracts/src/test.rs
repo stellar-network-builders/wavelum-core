@@ -1,8 +1,8 @@
 #![cfg(test)]
 
 use crate::{
-    BatchCreateData, VestingContract, VestingContractClient,
-    AssetAllocationEntry, BeneficiarySplit, GroupScheduleConfig,
+    AssetAllocationEntry, BatchCreateData, BeneficiarySplit, GroupScheduleConfig, VestingContract,
+    VestingContractClient,
 };
 use soroban_sdk::{
     testutils::{Address as _, Ledger},
@@ -24,7 +24,7 @@ fn setup() -> (Env, Address, VestingContractClient<'static>, Address, token::Cli
 
     client.initialize(&admin, &1_000_000_000i128);
     client.set_token(&token_address);
-    
+
     // Prefund sub-admin balance for testing
     asset_client.mint(&admin, &1_000_000);
 
@@ -111,10 +111,10 @@ fn test_revoke_vault() {
 #[test]
 fn test_pause_resume() {
     let (_env, _admin, client, _, _) = setup();
-    
+
     client.pause();
     assert!(client.is_paused());
-    
+
     client.resume();
     assert!(!client.is_paused());
 }
@@ -180,13 +180,16 @@ fn test_add_group_schedule_split_happy_path() {
         &0u64,
     );
 
-    let basket = vec![&env, AssetAllocationEntry {
-        asset_id: token_address,
-        total_amount: 1000,
-        released_amount: 0,
-        locked_amount: 0,
-        percentage: 10000,
-    }];
+    let basket = vec![
+        &env,
+        AssetAllocationEntry {
+            asset_id: token_address,
+            total_amount: 1000,
+            released_amount: 0,
+            locked_amount: 0,
+            percentage: 10000,
+        },
+    ];
 
     let splits = vec![
         &env,
@@ -224,24 +227,19 @@ fn test_add_group_schedule_split_preserves_total_with_rounding() {
     let b2 = Address::generate(&env);
     let now = env.ledger().timestamp();
 
-    let _prefund_vault = client.create_vault_full(
-        &admin,
-        &5i128,
-        &now,
-        &(now + 1000),
-        &0i128,
-        &true,
-        &true,
-        &0u64,
-    );
+    let _prefund_vault =
+        client.create_vault_full(&admin, &5i128, &now, &(now + 1000), &0i128, &true, &true, &0u64);
 
-    let basket = vec![&env, AssetAllocationEntry {
-        asset_id: token_address,
-        total_amount: 5,
-        released_amount: 0,
-        locked_amount: 0,
-        percentage: 10000,
-    }];
+    let basket = vec![
+        &env,
+        AssetAllocationEntry {
+            asset_id: token_address,
+            total_amount: 5,
+            released_amount: 0,
+            locked_amount: 0,
+            percentage: 10000,
+        },
+    ];
 
     let splits = vec![
         &env,
@@ -268,7 +266,8 @@ fn test_add_group_schedule_split_preserves_total_with_rounding() {
     assert_eq!(v1.allocations.get(0).unwrap().total_amount, 3);
     assert_eq!(v2.allocations.get(0).unwrap().total_amount, 2);
 
-    let total = v1.allocations.get(0).unwrap().total_amount + v2.allocations.get(0).unwrap().total_amount;
+    let total =
+        v1.allocations.get(0).unwrap().total_amount + v2.allocations.get(0).unwrap().total_amount;
     assert_eq!(total, 5);
 }
 
@@ -280,13 +279,16 @@ fn test_add_group_schedule_split_rejects_invalid_share_total() {
     let b2 = Address::generate(&env);
     let now = env.ledger().timestamp();
 
-    let basket = vec![&env, AssetAllocationEntry {
-        asset_id: token_address,
-        total_amount: 1000,
-        released_amount: 0,
-        locked_amount: 0,
-        percentage: 10000,
-    }];
+    let basket = vec![
+        &env,
+        AssetAllocationEntry {
+            asset_id: token_address,
+            total_amount: 1000,
+            released_amount: 0,
+            locked_amount: 0,
+            percentage: 10000,
+        },
+    ];
 
     let splits = vec![
         &env,
@@ -315,13 +317,16 @@ fn test_add_group_schedule_split_rejects_duplicate_beneficiary() {
     let b1 = Address::generate(&env);
     let now = env.ledger().timestamp();
 
-    let basket = vec![&env, AssetAllocationEntry {
-        asset_id: token_address,
-        total_amount: 1000,
-        released_amount: 0,
-        locked_amount: 0,
-        percentage: 10000,
-    }];
+    let basket = vec![
+        &env,
+        AssetAllocationEntry {
+            asset_id: token_address,
+            total_amount: 1000,
+            released_amount: 0,
+            locked_amount: 0,
+            percentage: 10000,
+        },
+    ];
 
     let splits = vec![
         &env,
@@ -348,7 +353,7 @@ fn test_voting_power_calculation() {
     let (env, _, client, _, _) = setup();
     let beneficiary = Address::generate(&env);
     let now = env.ledger().timestamp();
-    
+
     let _vault_id = client.create_vault_full(
         &beneficiary,
         &1000i128,
@@ -359,7 +364,7 @@ fn test_voting_power_calculation() {
         &true,
         &0u64,
     );
-    
+
     let voting_power = client.get_voting_power(&beneficiary);
     assert!(voting_power > 0);
 }
@@ -371,7 +376,7 @@ fn test_marketplace_transfer() {
     let marketplace = Address::generate(&env);
     let new_owner = Address::generate(&env);
     let now = env.ledger().timestamp();
-    
+
     let vault_id = client.create_vault_full(
         &beneficiary,
         &1000i128,
@@ -382,13 +387,13 @@ fn test_marketplace_transfer() {
         &true, // must be transferable
         &0u64,
     );
-    
+
     // Authorize transfer
     client.authorize_marketplace_transfer(&vault_id, &marketplace);
-    
+
     // Complete transfer
     client.complete_marketplace_transfer(&vault_id, &new_owner);
-    
+
     let vault = client.get_vault(&vault_id);
     assert_eq!(vault.owner, new_owner);
 }
@@ -398,7 +403,7 @@ fn test_batch_claim() {
     let (env, admin, client, token_address, token) = setup();
     let beneficiary = Address::generate(&env);
     let now = env.ledger().timestamp();
-    
+
     // Create multiple vaults for the same beneficiary (simulating Seed, Private, Advisory schedules)
     let seed_vault = client.create_vault_full(
         &beneficiary,
@@ -410,7 +415,7 @@ fn test_batch_claim() {
         &true,
         &0u64,
     );
-    
+
     let private_vault = client.create_vault_full(
         &beneficiary,
         &2000i128,
@@ -421,7 +426,7 @@ fn test_batch_claim() {
         &true,
         &0u64,
     );
-    
+
     let advisory_vault = client.create_vault_full(
         &beneficiary,
         &1500i128,
@@ -432,38 +437,40 @@ fn test_batch_claim() {
         &true,
         &0u64,
     );
-    
+
     // Fast forward time to make tokens vest
     env.ledger().set_timestamp(now + 1001);
-    
+
     // Check individual vault statistics before batch claim
     let (seed_total, seed_released, seed_claimable, _) = client.get_vault_statistics(&seed_vault);
-    let (private_total, private_released, private_claimable, _) = client.get_vault_statistics(&private_vault);
-    let (advisory_total, advisory_released, advisory_claimable, _) = client.get_vault_statistics(&advisory_vault);
-    
+    let (private_total, private_released, private_claimable, _) =
+        client.get_vault_statistics(&private_vault);
+    let (advisory_total, advisory_released, advisory_claimable, _) =
+        client.get_vault_statistics(&advisory_vault);
+
     assert_eq!(seed_claimable, 1000);
     assert_eq!(private_claimable, 2000);
     assert_eq!(advisory_claimable, 1500);
-    
+
     // Perform batch claim
     let claimed_assets = client.batch_claim(&beneficiary);
-    
+
     // Should have one entry for the single token type
     assert_eq!(claimed_assets.len(), 1);
-    
+
     let (claimed_token, claimed_amount) = claimed_assets.get(0).unwrap();
     assert_eq!(*claimed_token, token_address);
     assert_eq!(*claimed_amount, 4500); // 1000 + 2000 + 1500
-    
+
     // Verify all vaults are now fully claimed
     let (_, _, seed_claimable_after, _) = client.get_vault_statistics(&seed_vault);
     let (_, _, private_claimable_after, _) = client.get_vault_statistics(&private_vault);
     let (_, _, advisory_claimable_after, _) = client.get_vault_statistics(&advisory_vault);
-    
+
     assert_eq!(seed_claimable_after, 0);
     assert_eq!(private_claimable_after, 0);
     assert_eq!(advisory_claimable_after, 0);
-    
+
     // Verify beneficiary received the tokens
     let beneficiary_balance = token.balance(&beneficiary);
     assert_eq!(beneficiary_balance, 4500);
@@ -473,7 +480,7 @@ fn test_batch_claim() {
 fn test_batch_claim_with_no_vaults() {
     let (env, _, client, _, _) = setup();
     let user = Address::generate(&env);
-    
+
     // Batch claim should return empty vector for user with no vaults
     let claimed_assets = client.batch_claim(&user);
     assert_eq!(claimed_assets.len(), 0);
@@ -484,7 +491,7 @@ fn test_batch_claim_with_frozen_vault() {
     let (env, admin, client, token_address, token) = setup();
     let beneficiary = Address::generate(&env);
     let now = env.ledger().timestamp();
-    
+
     // Create two vaults
     let active_vault = client.create_vault_full(
         &beneficiary,
@@ -496,7 +503,7 @@ fn test_batch_claim_with_frozen_vault() {
         &true,
         &0u64,
     );
-    
+
     let frozen_vault = client.create_vault_full(
         &beneficiary,
         &2000i128,
@@ -507,16 +514,16 @@ fn test_batch_claim_with_frozen_vault() {
         &true,
         &0u64,
     );
-    
+
     // Freeze one vault (this would normally be done through admin functions)
     // For testing purposes, we'll simulate this by checking that frozen vaults are skipped
-    
+
     // Fast forward time
     env.ledger().set_timestamp(now + 1001);
-    
+
     // Perform batch claim - should only claim from active vault
     let claimed_assets = client.batch_claim(&beneficiary);
-    
+
     // Should still claim from the active vault
     assert_eq!(claimed_assets.len(), 1);
     let (claimed_token, claimed_amount) = claimed_assets.get(0).unwrap();
@@ -525,7 +532,9 @@ fn test_batch_claim_with_frozen_vault() {
 }
 
 #[test]
-#[should_panic(expected = "Cannot trigger milestone 2 - previous milestone 1 must be triggered first")]
+#[should_panic(
+    expected = "Cannot trigger milestone 2 - previous milestone 1 must be triggered first"
+)]
 fn test_milestone_leap_frogging_prevention() {
     let (env, admin, client, _, _) = setup();
     let beneficiary = Address::generate(&env);
@@ -586,7 +595,7 @@ fn test_milestone_sequential_triggering() {
 
     // Step 1: Trigger milestone 0 (first milestone - should always succeed)
     client.trigger_milestone(&vault_id, &0u32, &admin);
-    
+
     let milestone_data = client.get_milestone_data(&vault_id).unwrap();
     assert_eq!(milestone_data.current_milestone, 0);
     assert_eq!(milestone_data.triggered_milestones.len(), 1);
@@ -600,7 +609,7 @@ fn test_milestone_sequential_triggering() {
 
     // Step 3: Trigger milestone 1 (sequential - should succeed)
     client.trigger_milestone(&vault_id, &1u32, &admin);
-    
+
     let milestone_data = client.get_milestone_data(&vault_id).unwrap();
     assert_eq!(milestone_data.current_milestone, 1);
     assert_eq!(milestone_data.triggered_milestones.len(), 2);
@@ -609,7 +618,7 @@ fn test_milestone_sequential_triggering() {
 
     // Step 4: Now milestone 2 can be triggered (sequential - should succeed)
     client.trigger_milestone(&vault_id, &2u32, &admin);
-    
+
     let milestone_data = client.get_milestone_data(&vault_id).unwrap();
     assert_eq!(milestone_data.current_milestone, 2);
     assert_eq!(milestone_data.triggered_milestones.len(), 3);

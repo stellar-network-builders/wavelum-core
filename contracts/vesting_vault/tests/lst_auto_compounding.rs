@@ -1,7 +1,9 @@
 #![cfg(test)]
 
 use soroban_sdk::{Address, Env};
-use vesting_vault::{VestingVault, Error, LSTConfig, LSTPoolShares, UserLSTShares, UnbondingRequest};
+use vesting_vault::{
+    Error, LSTConfig, LSTPoolShares, UnbondingRequest, UserLSTShares, VestingVault,
+};
 
 #[test]
 fn test_lst_compounding_configuration() {
@@ -64,13 +66,8 @@ fn test_deposit_to_lst_pool() {
     );
 
     // Deposit tokens to pool
-    VestingVault::deposit_to_lst_pool(
-        env.clone(),
-        user.clone(),
-        vesting_id,
-        deposit_amount,
-    )
-    .unwrap();
+    VestingVault::deposit_to_lst_pool(env.clone(), user.clone(), vesting_id, deposit_amount)
+        .unwrap();
 
     // Verify pool state
     let pool_shares = VestingVault::get_lst_pool_shares(env.clone(), vesting_id).unwrap();
@@ -110,13 +107,8 @@ fn test_lst_compounding_rewards() {
     );
 
     // Deposit tokens
-    VestingVault::deposit_to_lst_pool(
-        env.clone(),
-        user.clone(),
-        vesting_id,
-        deposit_amount,
-    )
-    .unwrap();
+    VestingVault::deposit_to_lst_pool(env.clone(), user.clone(), vesting_id, deposit_amount)
+        .unwrap();
 
     // Advance time to allow compounding (more than 1 hour)
     env.ledger().set_timestamp(env.ledger().timestamp() + 7200);
@@ -153,13 +145,8 @@ fn test_exchange_rate_manipulation_protection() {
     );
 
     // Deposit tokens
-    VestingVault::deposit_to_lst_pool(
-        env.clone(),
-        user.clone(),
-        vesting_id,
-        deposit_amount,
-    )
-    .unwrap();
+    VestingVault::deposit_to_lst_pool(env.clone(), user.clone(), vesting_id, deposit_amount)
+        .unwrap();
 
     // Try to compound immediately (less than 1 hour since snapshot)
     let result = VestingVault::compound_lst_rewards(env.clone(), vesting_id);
@@ -193,19 +180,15 @@ fn test_unbonding_request() {
     );
 
     // Deposit tokens
-    VestingVault::deposit_to_lst_pool(
-        env.clone(),
-        user.clone(),
-        vesting_id,
-        deposit_amount,
-    )
-    .unwrap();
+    VestingVault::deposit_to_lst_pool(env.clone(), user.clone(), vesting_id, deposit_amount)
+        .unwrap();
 
     // Request unbonding
     VestingVault::request_unbonding(env.clone(), user.clone(), vesting_id).unwrap();
 
     // Verify unbonding request was created
-    let unbonding_request = VestingVault::get_unbonding_request(env.clone(), &user, vesting_id).unwrap();
+    let unbonding_request =
+        VestingVault::get_unbonding_request(env.clone(), &user, vesting_id).unwrap();
     assert_eq!(unbonding_request.shares, deposit_amount);
     assert!(unbonding_request.unbonding_complete_at > env.ledger().timestamp());
 
@@ -241,13 +224,8 @@ fn test_unbonding_period_not_elapsed() {
     );
 
     // Deposit tokens
-    VestingVault::deposit_to_lst_pool(
-        env.clone(),
-        user.clone(),
-        vesting_id,
-        deposit_amount,
-    )
-    .unwrap();
+    VestingVault::deposit_to_lst_pool(env.clone(), user.clone(), vesting_id, deposit_amount)
+        .unwrap();
 
     // Request unbonding
     VestingVault::request_unbonding(env.clone(), user.clone(), vesting_id).unwrap();
@@ -284,13 +262,8 @@ fn test_complete_unbonding_after_period() {
     );
 
     // Deposit tokens
-    VestingVault::deposit_to_lst_pool(
-        env.clone(),
-        user.clone(),
-        vesting_id,
-        deposit_amount,
-    )
-    .unwrap();
+    VestingVault::deposit_to_lst_pool(env.clone(), user.clone(), vesting_id, deposit_amount)
+        .unwrap();
 
     // Request unbonding
     VestingVault::request_unbonding(env.clone(), user.clone(), vesting_id).unwrap();
@@ -399,13 +372,15 @@ fn test_rebasing_token_simulation() {
     VestingVault::compound_lst_rewards(env.clone(), vesting_id).unwrap();
 
     // Calculate user1's claimable amount based on shares
-    let user1_claim = VestingVault::calculate_shares_based_claim(env.clone(), &user1, vesting_id).unwrap();
+    let user1_claim =
+        VestingVault::calculate_shares_based_claim(env.clone(), &user1, vesting_id).unwrap();
     // user1 has 1000 shares out of 2000 total = 50% of pool
     // Pool now has 2200 underlying, so user1 should get 1100
     assert_eq!(user1_claim, 1100);
 
     // Calculate user2's claimable amount
-    let user2_claim = VestingVault::calculate_shares_based_claim(env.clone(), &user2, vesting_id).unwrap();
+    let user2_claim =
+        VestingVault::calculate_shares_based_claim(env.clone(), &user2, vesting_id).unwrap();
     assert_eq!(user2_claim, 1100);
 
     // Verify internal accounting matches actual balances
@@ -443,7 +418,8 @@ fn test_shares_based_claim_calculation() {
     VestingVault::deposit_to_lst_pool(env.clone(), user.clone(), vesting_id, 1000i128).unwrap();
 
     // Calculate claimable amount
-    let claimable = VestingVault::calculate_shares_based_claim(env.clone(), &user, vesting_id).unwrap();
+    let claimable =
+        VestingVault::calculate_shares_based_claim(env.clone(), &user, vesting_id).unwrap();
     assert_eq!(claimable, 1000);
 
     // Simulate yield by updating pool
@@ -452,7 +428,8 @@ fn test_shares_based_claim_calculation() {
     VestingVault::set_lst_pool_shares(env.clone(), vesting_id, &pool);
 
     // Calculate claimable amount after yield
-    let claimable_after_yield = VestingVault::calculate_shares_based_claim(env.clone(), &user, vesting_id).unwrap();
+    let claimable_after_yield =
+        VestingVault::calculate_shares_based_claim(env.clone(), &user, vesting_id).unwrap();
     assert_eq!(claimable_after_yield, 1100);
 }
 

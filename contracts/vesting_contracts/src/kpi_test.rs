@@ -1,15 +1,9 @@
 #![cfg(test)]
 
-use soroban_sdk::{
-    symbol_short, testutils::Address as _, Address, Env,
-};
-use crate::kpi_engine::{
-    is_kpi_met, set_kpi_met, get_kpi_config, get_kpi_log,
-};
-use crate::kpi_vesting::{
-    attach_kpi_gate, require_kpi_gate_passed, kpi_status, kpi_threshold,
-};
+use crate::kpi_engine::{get_kpi_config, get_kpi_log, is_kpi_met, set_kpi_met};
+use crate::kpi_vesting::{attach_kpi_gate, kpi_status, kpi_threshold, require_kpi_gate_passed};
 use crate::oracle::ComparisonOperator;
+use soroban_sdk::{symbol_short, testutils::Address as _, Address, Env};
 
 // ── helpers ───────────────────────────────────────────────────────────────
 

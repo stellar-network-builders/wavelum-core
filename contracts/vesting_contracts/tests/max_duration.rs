@@ -1,6 +1,9 @@
 use soroban_sdk::{testutils::Address as _, vec, Address, Env};
 
-use vesting_contracts::{BatchCreateData, ScheduleConfig, VestingContract, VestingContractClient, MAX_DURATION, AdminAction, AssetAllocationEntry};
+use vesting_contracts::{
+    AdminAction, AssetAllocationEntry, BatchCreateData, ScheduleConfig, VestingContract,
+    VestingContractClient, MAX_DURATION,
+};
 
 fn setup(env: &Env) -> (VestingContractClient<'static>, Address, Address) {
     env.mock_all_auths();
@@ -29,13 +32,16 @@ fn create_vault_full_allows_max_duration() {
 
     let cfg = ScheduleConfig {
         owner: beneficiary.clone(),
-        asset_basket: soroban_sdk::vec![&env, AssetAllocationEntry {
-            asset_id: token,
-            total_amount: 1_000i128,
-            released_amount: 0,
-            locked_amount: 0,
-            percentage: 10000,
-        }],
+        asset_basket: soroban_sdk::vec![
+            &env,
+            AssetAllocationEntry {
+                asset_id: token,
+                total_amount: 1_000i128,
+                released_amount: 0,
+                locked_amount: 0,
+                percentage: 10000,
+            }
+        ],
         start_time: start,
         end_time: end,
         keeper_fee: 0i128,
@@ -58,13 +64,16 @@ fn create_vault_full_rejects_over_max_duration() {
 
     let cfg = ScheduleConfig {
         owner: beneficiary.clone(),
-        asset_basket: soroban_sdk::vec![&env, AssetAllocationEntry {
-            asset_id: token,
-            total_amount: 1_000i128,
-            released_amount: 0,
-            locked_amount: 0,
-            percentage: 10000,
-        }],
+        asset_basket: soroban_sdk::vec![
+            &env,
+            AssetAllocationEntry {
+                asset_id: token,
+                total_amount: 1_000i128,
+                released_amount: 0,
+                locked_amount: 0,
+                percentage: 10000,
+            }
+        ],
         start_time: start,
         end_time: end,
         keeper_fee: 0i128,
@@ -87,13 +96,16 @@ fn create_vault_lazy_rejects_over_max_duration() {
 
     let cfg = ScheduleConfig {
         owner: beneficiary.clone(),
-        asset_basket: soroban_sdk::vec![&env, AssetAllocationEntry {
-            asset_id: token,
-            total_amount: 1_000i128,
-            released_amount: 0,
-            locked_amount: 0,
-            percentage: 10000,
-        }],
+        asset_basket: soroban_sdk::vec![
+            &env,
+            AssetAllocationEntry {
+                asset_id: token,
+                total_amount: 1_000i128,
+                released_amount: 0,
+                locked_amount: 0,
+                percentage: 10000,
+            }
+        ],
         start_time: start,
         end_time: end,
         keeper_fee: 0i128,
@@ -116,13 +128,19 @@ fn batch_create_vaults_rejects_over_max_duration() {
 
     let batch = BatchCreateData {
         recipients: vec![&env, recipient],
-        asset_baskets: vec![&env, vec![&env, AssetAllocationEntry {
-            asset_id: token.clone(),
-            total_amount: 1_000i128,
-            released_amount: 0,
-            locked_amount: 0,
-            percentage: 10000,
-        }]],
+        asset_baskets: vec![
+            &env,
+            vec![
+                &env,
+                AssetAllocationEntry {
+                    asset_id: token.clone(),
+                    total_amount: 1_000i128,
+                    released_amount: 0,
+                    locked_amount: 0,
+                    percentage: 10000,
+                },
+            ],
+        ],
         start_times: vec![&env, start],
         end_times: vec![&env, end],
         keeper_fees: vec![&env, 0i128],
@@ -159,13 +177,16 @@ fn batch_add_schedules_rejects_over_max_duration() {
         &env,
         ScheduleConfig {
             owner: Address::generate(&env),
-            asset_basket: soroban_sdk::vec![&env, AssetAllocationEntry {
-                asset_id: token,
-                total_amount: 1_000i128,
-                released_amount: 0,
-                locked_amount: 0,
-                percentage: 10000,
-            }],
+            asset_basket: soroban_sdk::vec![
+                &env,
+                AssetAllocationEntry {
+                    asset_id: token,
+                    total_amount: 1_000i128,
+                    released_amount: 0,
+                    locked_amount: 0,
+                    percentage: 10000,
+                }
+            ],
             start_time: start,
             end_time: end,
             keeper_fee: 0i128,

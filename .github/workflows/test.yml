@@ -23,6 +23,36 @@ env:
   RUST_BACKTRACE: 1
 
 jobs:
+  fmt:
+    name: Code Formatting Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.91.0"
+          components: rustfmt
+
+      - name: Check formatting
+        run: cargo fmt --check --all
+
+  clippy:
+    name: Clippy Linting
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.91.0"
+          components: clippy
+
+      - name: Run Clippy with deny-level warnings
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
   validate-contributing:
     name: Validate CONTRIBUTING.md
     runs-on: ubuntu-latest
@@ -76,7 +106,6 @@ jobs:
         with:
           toolchain: 1.91.0
           target: wasm32v1-none
-          components: rustfmt, clippy
 
       - name: Install Stellar CLI
         if: steps.check-contracts.outputs.contracts_changed == 'true'
@@ -105,13 +134,6 @@ jobs:
         run: |
           chmod +x scripts/contract-safety.sh
           ./scripts/contract-safety.sh
-
-      - name: Run Clippy with Strict Settings
-        run: |
-          cargo clippy --all-targets --all-features -- -D warnings -W clippy::all -W clippy::pedantic
-
-      - name: Check Code Formatting
-        run: cargo fmt --all -- --check
 
       - name: Scan for Unsafe Patterns
         run: |

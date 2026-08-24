@@ -1,11 +1,11 @@
-﻿/// Auto-stake module for the Vesting Vault.
+/// Auto-stake module for the Vesting Vault.
 ///
 /// Tokens never leave the vault. Staking registers the vault's locked balance
 /// as an active stake on a whitelisted external staking contract via a
 /// synchronous cross-contract call. Yield accrues on the staking contract and
 /// is pulled back to the beneficiary via `claim_yield`. Revocation always
 /// unstakes before returning tokens to the treasury.
-use soroban_sdk::{contracttype, contractevent, Address, Env, Symbol, Vec};
+use soroban_sdk::{contractevent, contracttype, Address, Env, Symbol, Vec};
 
 // ---------------------------------------------------------------------------
 // Types
@@ -85,28 +85,22 @@ pub enum StakeDataKey {
 // ---------------------------------------------------------------------------
 
 pub fn get_stake_info(env: &Env, vault_id: u64) -> VaultStakeInfo {
-    env.storage()
-        .instance()
-        .get(&StakeDataKey::VaultStakeInfo(vault_id))
-        .unwrap_or(VaultStakeInfo {
+    env.storage().instance().get(&StakeDataKey::VaultStakeInfo(vault_id)).unwrap_or(
+        VaultStakeInfo {
             tokens_staked: 0,
             stake_state: StakeState::Unstaked,
             accumulated_yield: 0,
-        })
+        },
+    )
 }
 
 pub fn set_stake_info(env: &Env, vault_id: u64, info: &VaultStakeInfo) {
-    env.storage()
-        .instance()
-        .set(&StakeDataKey::VaultStakeInfo(vault_id), info);
+    env.storage().instance().set(&StakeDataKey::VaultStakeInfo(vault_id), info);
 }
 
 /// Returns the list of whitelisted staking contract addresses.
 pub fn get_approved_staking_contracts(env: &Env) -> Vec<Address> {
-    env.storage()
-        .instance()
-        .get(&StakeDataKey::ApprovedStakingContracts)
-        .unwrap_or(Vec::new(env))
+    env.storage().instance().get(&StakeDataKey::ApprovedStakingContracts).unwrap_or(Vec::new(env))
 }
 
 /// Adds `contract` to the staking contract whitelist.
@@ -114,9 +108,7 @@ pub fn add_approved_staking_contract(env: &Env, contract: Address) {
     let mut list = get_approved_staking_contracts(env);
     if !list.contains(&contract) {
         list.push_back(contract);
-        env.storage()
-            .instance()
-            .set(&StakeDataKey::ApprovedStakingContracts, &list);
+        env.storage().instance().set(&StakeDataKey::ApprovedStakingContracts, &list);
     }
 }
 
@@ -129,9 +121,7 @@ pub fn remove_approved_staking_contract(env: &Env, contract: Address) {
             updated.push_back(c);
         }
     }
-    env.storage()
-        .instance()
-        .set(&StakeDataKey::ApprovedStakingContracts, &updated);
+    env.storage().instance().set(&StakeDataKey::ApprovedStakingContracts, &updated);
 }
 
 /// Returns `true` if `contract` is on the whitelist.
@@ -173,11 +163,8 @@ pub fn call_unstake_tokens(
     beneficiary: &Address,
     vault_id: u64,
 ) {
-    let args: soroban_sdk::Vec<Val> = soroban_sdk::vec![
-        env,
-        beneficiary.into_val(env),
-        vault_id.into_val(env),
-    ];
+    let args: soroban_sdk::Vec<Val> =
+        soroban_sdk::vec![env, beneficiary.into_val(env), vault_id.into_val(env),];
     env.invoke_contract::<()>(staking_contract, &Symbol::new(env, "unstake_tokens"), args);
 }
 
@@ -189,11 +176,8 @@ pub fn call_claim_yield_for(
     beneficiary: &Address,
     vault_id: u64,
 ) -> i128 {
-    let args: soroban_sdk::Vec<Val> = soroban_sdk::vec![
-        env,
-        beneficiary.into_val(env),
-        vault_id.into_val(env),
-    ];
+    let args: soroban_sdk::Vec<Val> =
+        soroban_sdk::vec![env, beneficiary.into_val(env), vault_id.into_val(env),];
     env.invoke_contract::<i128>(staking_contract, &Symbol::new(env, "claim_yield_for"), args)
 }
 
@@ -201,8 +185,20 @@ pub fn call_claim_yield_for(
 // Event helpers
 // ---------------------------------------------------------------------------
 
-pub fn emit_staked(env: &Env, vault_id: u64, beneficiary: &Address, amount: i128, staking_contract: &Address) {
-    AutoStakedEvent { vault_id, beneficiary: beneficiary.clone(), amount, staking_contract: staking_contract.clone() }.publish(env);
+pub fn emit_staked(
+    env: &Env,
+    vault_id: u64,
+    beneficiary: &Address,
+    amount: i128,
+    staking_contract: &Address,
+) {
+    AutoStakedEvent {
+        vault_id,
+        beneficiary: beneficiary.clone(),
+        amount,
+        staking_contract: staking_contract.clone(),
+    }
+    .publish(env);
 }
 
 pub fn emit_unstaked(env: &Env, vault_id: u64, beneficiary: &Address, amount: i128) {

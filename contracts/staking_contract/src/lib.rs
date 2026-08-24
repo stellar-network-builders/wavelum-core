@@ -1,13 +1,7 @@
 #![no_std]
 // Safety lint attributes for smart contract
 #![deny(unsafe_code)]
-#![warn(
-    missing_docs,
-    missing_debug_implementations,
-    unused_results,
-    clippy::all,
-    clippy::pedantic
-)]
+#![warn(missing_docs, missing_debug_implementations, unused_results, clippy::all, clippy::pedantic)]
 
 /// Staking contract — holds stake records for tokens locked in vesting vaults.
 ///
@@ -15,9 +9,7 @@
 /// stake record; the staking contract tracks yield accrual off-chain or via
 /// its own logic and exposes `claim_yield_for` so the vault can pull yield
 /// back to the beneficiary.
-use soroban_sdk::{
-    contract, contractimpl, contracttype, contractevent, Address, Env, Vec,
-};
+use soroban_sdk::{contract, contractevent, contractimpl, contracttype, Address, Env, Vec};
 
 // ---------------------------------------------------------------------------
 // Storage keys
@@ -101,11 +93,8 @@ impl StakingContract {
     /// Add a vault contract address to the authorised callers list.
     pub fn add_authorised_vault(env: Env, vault: Address) {
         Self::require_admin(&env);
-        let mut vaults: Vec<Address> = env
-            .storage()
-            .instance()
-            .get(&DataKey::AuthorisedVaults)
-            .unwrap_or(Vec::new(&env));
+        let mut vaults: Vec<Address> =
+            env.storage().instance().get(&DataKey::AuthorisedVaults).unwrap_or(Vec::new(&env));
         if !vaults.contains(&vault) {
             vaults.push_back(vault);
             env.storage().instance().set(&DataKey::AuthorisedVaults, &vaults);
@@ -148,11 +137,8 @@ impl StakingContract {
     pub fn unstake_tokens(env: Env, beneficiary: Address, vault_id: u64) {
         Self::require_authorised_vault(&env);
         let key = DataKey::StakeRecord(beneficiary.clone(), vault_id);
-        let mut record: StakeRecord = env
-            .storage()
-            .instance()
-            .get(&key)
-            .unwrap_or_else(|| panic!("NotStaked"));
+        let mut record: StakeRecord =
+            env.storage().instance().get(&key).unwrap_or_else(|| panic!("NotStaked"));
         if !record.is_active {
             panic!("NotStaked");
         }
@@ -164,11 +150,8 @@ impl StakingContract {
     /// Return the pending yield for `beneficiary`/`vault_id` without resetting.
     pub fn get_yield(env: Env, beneficiary: Address, vault_id: u64) -> i128 {
         let key = DataKey::StakeRecord(beneficiary, vault_id);
-        let record: StakeRecord = env
-            .storage()
-            .instance()
-            .get(&key)
-            .unwrap_or_else(|| panic!("NotStaked"));
+        let record: StakeRecord =
+            env.storage().instance().get(&key).unwrap_or_else(|| panic!("NotStaked"));
         record.pending_yield
     }
 
@@ -181,11 +164,8 @@ impl StakingContract {
     pub fn claim_yield_for(env: Env, beneficiary: Address, vault_id: u64) -> i128 {
         Self::require_authorised_vault(&env);
         let key = DataKey::StakeRecord(beneficiary.clone(), vault_id);
-        let mut record: StakeRecord = env
-            .storage()
-            .instance()
-            .get(&key)
-            .unwrap_or_else(|| panic!("NotStaked"));
+        let mut record: StakeRecord =
+            env.storage().instance().get(&key).unwrap_or_else(|| panic!("NotStaked"));
         if !record.is_active {
             panic!("NotStaked");
         }
@@ -204,11 +184,8 @@ impl StakingContract {
             panic!("InvalidAmount");
         }
         let key = DataKey::StakeRecord(beneficiary.clone(), vault_id);
-        let mut record: StakeRecord = env
-            .storage()
-            .instance()
-            .get(&key)
-            .unwrap_or_else(|| panic!("NotStaked"));
+        let mut record: StakeRecord =
+            env.storage().instance().get(&key).unwrap_or_else(|| panic!("NotStaked"));
         record.pending_yield += amount;
         env.storage().instance().set(&key, &record);
     }
@@ -217,11 +194,8 @@ impl StakingContract {
     pub fn slash_stake(env: Env, beneficiary: Address, vault_id: u64, amount: i128) {
         Self::require_admin(&env);
         let key = DataKey::StakeRecord(beneficiary.clone(), vault_id);
-        let mut record: StakeRecord = env
-            .storage()
-            .instance()
-            .get(&key)
-            .unwrap_or_else(|| panic!("NotStaked"));
+        let mut record: StakeRecord =
+            env.storage().instance().get(&key).unwrap_or_else(|| panic!("NotStaked"));
         if amount > record.amount {
             panic!("SlashExceedsStake");
         }
@@ -250,11 +224,8 @@ impl StakingContract {
     }
 
     fn require_authorised_vault(env: &Env) {
-        let vaults: Vec<Address> = env
-            .storage()
-            .instance()
-            .get(&DataKey::AuthorisedVaults)
-            .unwrap_or(Vec::new(env));
+        let vaults: Vec<Address> =
+            env.storage().instance().get(&DataKey::AuthorisedVaults).unwrap_or(Vec::new(env));
         let caller = env.current_contract_address();
         // In Soroban, the invoker is the contract that called us.
         // We check that the invoking contract is in the authorised list.

@@ -1,5 +1,5 @@
-use soroban_sdk::{contracttype, contractevent, Address, Env};
 use crate::DataKey;
+use soroban_sdk::{contractevent, contracttype, Address, Env};
 
 pub const MIN_SWITCH_DURATION: u64 = 30 * 24 * 60 * 60;
 pub const MAX_SWITCH_DURATION: u64 = 730 * 24 * 60 * 60;
@@ -74,10 +74,7 @@ fn succession_key(vault_id: u64) -> DataKey {
 }
 
 pub fn get_succession_state(env: &Env, vault_id: u64) -> SuccessionState {
-    env.storage()
-        .instance()
-        .get(&succession_key(vault_id))
-        .unwrap_or(SuccessionState::None)
+    env.storage().instance().get(&succession_key(vault_id)).unwrap_or(SuccessionState::None)
 }
 
 pub fn nominate_backup(
@@ -122,7 +119,8 @@ pub fn nominate_backup(
         backup,
         switch_duration,
         challenge_window,
-    }.publish(env);
+    }
+    .publish(env);
 }
 
 pub fn revoke_backup(env: &Env, vault_id: u64, primary: &Address) {
@@ -134,13 +132,8 @@ pub fn revoke_backup(env: &Env, vault_id: u64, primary: &Address) {
         SuccessionState::Succeeded(_) => panic!("AlreadySucceeded"),
         SuccessionState::Nominated(_) => {}
     }
-    env.storage()
-        .instance()
-        .set(&succession_key(vault_id), &SuccessionState::None);
-    BackupRevokedEvent {
-        vault_id,
-        primary: primary.clone(),
-    }.publish(env);
+    env.storage().instance().set(&succession_key(vault_id), &SuccessionState::None);
+    BackupRevokedEvent { vault_id, primary: primary.clone() }.publish(env);
 }
 
 pub fn update_activity(env: &Env, vault_id: u64) {
@@ -148,10 +141,7 @@ pub fn update_activity(env: &Env, vault_id: u64) {
     let now = env.ledger().timestamp();
     match current {
         SuccessionState::Nominated(data) => {
-            let updated = SuccessionState::Nominated(NominatedData {
-                last_activity: now,
-                ..data
-            });
+            let updated = SuccessionState::Nominated(NominatedData { last_activity: now, ..data });
             env.storage().instance().set(&succession_key(vault_id), &updated);
         }
         SuccessionState::ClaimPending(data) => {
@@ -163,10 +153,7 @@ pub fn update_activity(env: &Env, vault_id: u64) {
                 last_activity: now,
             });
             env.storage().instance().set(&succession_key(vault_id), &updated);
-            ClaimCancelledEvent {
-                vault_id,
-                backup,
-            }.publish(env);
+            ClaimCancelledEvent { vault_id, backup }.publish(env);
         }
         SuccessionState::None | SuccessionState::Succeeded(_) => {}
     }
@@ -196,11 +183,7 @@ pub fn initiate_succession_claim(env: &Env, vault_id: u64, caller: &Address) {
                 switch_duration: data.switch_duration,
             });
             env.storage().instance().set(&succession_key(vault_id), &state);
-            SuccessionClaimedEvent {
-                vault_id,
-                backup,
-                timestamp: now,
-            }.publish(env);
+            SuccessionClaimedEvent { vault_id, backup, timestamp: now }.publish(env);
         }
     }
 }
@@ -227,11 +210,8 @@ pub fn finalise_succession(env: &Env, vault_id: u64, caller: &Address) -> Addres
                 succeeded_at: now,
             });
             env.storage().instance().set(&succession_key(vault_id), &state);
-            SuccessionFinalisedEvent {
-                vault_id,
-                new_owner: new_owner.clone(),
-                timestamp: now,
-            }.publish(env);
+            SuccessionFinalisedEvent { vault_id, new_owner: new_owner.clone(), timestamp: now }
+                .publish(env);
             new_owner
         }
     }
@@ -254,10 +234,7 @@ pub fn cancel_succession_claim(env: &Env, vault_id: u64, primary: &Address) {
                 last_activity: now,
             });
             env.storage().instance().set(&succession_key(vault_id), &state);
-            ClaimCancelledEvent {
-                vault_id,
-                backup: backup.clone(),
-            }.publish(env);
+            ClaimCancelledEvent { vault_id, backup: backup.clone() }.publish(env);
         }
     }
 }

@@ -1,7 +1,9 @@
 #![cfg(test)]
 
-use soroban_sdk::{contracttype, Address, Env, Vec, String};
-use vesting_vault::{VestingVault, VestingVaultClient, Error, MasterSchedule, SchedulesConsolidated};
+use soroban_sdk::{contracttype, Address, Env, String, Vec};
+use vesting_vault::{
+    Error, MasterSchedule, SchedulesConsolidated, VestingVault, VestingVaultClient,
+};
 
 #[test]
 fn test_merge_schedules_success() {
@@ -24,7 +26,7 @@ fn test_merge_schedules_success() {
     assert!(result.is_ok());
 
     let master_id = result.unwrap();
-    
+
     // Verify master schedule was created
     let master_schedule = client.get_master_schedule(&master_id).unwrap();
     assert_eq!(master_schedule.beneficiary, beneficiary);
@@ -146,7 +148,13 @@ fn test_merge_schedules_weighted_average_calculation() {
 
     // Setup schedules with known values for testing weighted averages
     let current_time = env.ledger().timestamp();
-    setup_mock_schedules_for_math_test(&env, &beneficiary, &asset_address, &schedule_ids, current_time);
+    setup_mock_schedules_for_math_test(
+        &env,
+        &beneficiary,
+        &asset_address,
+        &schedule_ids,
+        current_time,
+    );
 
     let result = client.merge_schedules(&beneficiary, &schedule_ids);
     assert!(result.is_ok());
@@ -160,7 +168,7 @@ fn test_merge_schedules_weighted_average_calculation() {
     // Weighted start = (100*1000 + 200*2000) / 3000 = 166.67
     // Weighted end = (1000*1000 + 2000*2000) / 3000 = 1666.67
     // Weighted cliff = (50*1000 + 100*2000) / 3000 = 83.33
-    
+
     assert_eq!(master_schedule.total_amount, 3000); // 1000 + 2000
     assert_eq!(master_schedule.start_time, 166); // Floor of 166.67
     assert_eq!(master_schedule.end_time, 1666); // Floor of 1666.67
@@ -188,7 +196,7 @@ fn test_merge_schedules_event_emission() {
     // Verify the consolidation event was emitted
     let events = env.events().all();
     assert_eq!(events.len(), 1);
-    
+
     let event = events.get(0).unwrap();
     assert_eq!(event.topics.get(0), beneficiary);
     assert_eq!(event.topics.get(1), schedule_ids);
@@ -197,9 +205,14 @@ fn test_merge_schedules_event_emission() {
 
 // Helper functions for test setup
 
-fn setup_mock_schedules(env: &Env, beneficiary: &Address, asset_address: &Address, schedule_ids: &Vec<u32>) {
+fn setup_mock_schedules(
+    env: &Env,
+    beneficiary: &Address,
+    asset_address: &Address,
+    schedule_ids: &Vec<u32>,
+) {
     let current_time = env.ledger().timestamp();
-    
+
     for (i, schedule_id) in schedule_ids.iter().enumerate() {
         let schedule_data = MockScheduleData {
             beneficiary: beneficiary.clone(),
@@ -210,14 +223,20 @@ fn setup_mock_schedules(env: &Env, beneficiary: &Address, asset_address: &Addres
             end_time: current_time + 31536000 + (i as u64 * 1000),
             cliff_duration: 2592000,
         };
-        
+
         store_mock_schedule_data(env, *schedule_id, schedule_data);
     }
 }
 
-fn setup_mock_schedules_with_different_assets(env: &Env, beneficiary: &Address, asset1: &Address, asset2: &Address, schedule_ids: &Vec<u32>) {
+fn setup_mock_schedules_with_different_assets(
+    env: &Env,
+    beneficiary: &Address,
+    asset1: &Address,
+    asset2: &Address,
+    schedule_ids: &Vec<u32>,
+) {
     let current_time = env.ledger().timestamp();
-    
+
     let schedule1_data = MockScheduleData {
         beneficiary: beneficiary.clone(),
         asset_address: asset1.clone(),
@@ -227,7 +246,7 @@ fn setup_mock_schedules_with_different_assets(env: &Env, beneficiary: &Address, 
         end_time: current_time + 31536000,
         cliff_duration: 2592000,
     };
-    
+
     let schedule2_data = MockScheduleData {
         beneficiary: beneficiary.clone(),
         asset_address: asset2.clone(), // Different asset
@@ -237,14 +256,19 @@ fn setup_mock_schedules_with_different_assets(env: &Env, beneficiary: &Address, 
         end_time: current_time + 31536000,
         cliff_duration: 2592000,
     };
-    
+
     store_mock_schedule_data(env, *schedule_ids.get(0).unwrap(), schedule1_data);
     store_mock_schedule_data(env, *schedule_ids.get(1).unwrap(), schedule2_data);
 }
 
-fn setup_mock_schedules_with_acceleration_risk(env: &Env, beneficiary: &Address, asset_address: &Address, schedule_ids: &Vec<u32>) {
+fn setup_mock_schedules_with_acceleration_risk(
+    env: &Env,
+    beneficiary: &Address,
+    asset_address: &Address,
+    schedule_ids: &Vec<u32>,
+) {
     let current_time = env.ledger().timestamp();
-    
+
     // Schedule 1: Very long duration
     let schedule1_data = MockScheduleData {
         beneficiary: beneficiary.clone(),
@@ -255,7 +279,7 @@ fn setup_mock_schedules_with_acceleration_risk(env: &Env, beneficiary: &Address,
         end_time: current_time + 63072000, // 2 years
         cliff_duration: 2592000,
     };
-    
+
     // Schedule 2: Very short duration
     let schedule2_data = MockScheduleData {
         beneficiary: beneficiary.clone(),
@@ -266,12 +290,18 @@ fn setup_mock_schedules_with_acceleration_risk(env: &Env, beneficiary: &Address,
         end_time: current_time + 2592000, // 30 days
         cliff_duration: 2592000,
     };
-    
+
     store_mock_schedule_data(env, *schedule_ids.get(0).unwrap(), schedule1_data);
     store_mock_schedule_data(env, *schedule_ids.get(1).unwrap(), schedule2_data);
 }
 
-fn setup_mock_schedules_for_math_test(env: &Env, beneficiary: &Address, asset_address: &Address, schedule_ids: &Vec<u32>, base_time: u64) {
+fn setup_mock_schedules_for_math_test(
+    env: &Env,
+    beneficiary: &Address,
+    asset_address: &Address,
+    schedule_ids: &Vec<u32>,
+    base_time: u64,
+) {
     // Schedule 1: 1000 tokens, specific timing
     let schedule1_data = MockScheduleData {
         beneficiary: beneficiary.clone(),
@@ -282,7 +312,7 @@ fn setup_mock_schedules_for_math_test(env: &Env, beneficiary: &Address, asset_ad
         end_time: base_time + 1000,
         cliff_duration: 50,
     };
-    
+
     // Schedule 2: 2000 tokens, different timing
     let schedule2_data = MockScheduleData {
         beneficiary: beneficiary.clone(),
@@ -293,7 +323,7 @@ fn setup_mock_schedules_for_math_test(env: &Env, beneficiary: &Address, asset_ad
         end_time: base_time + 2000,
         cliff_duration: 100,
     };
-    
+
     store_mock_schedule_data(env, *schedule_ids.get(0).unwrap(), schedule1_data);
     store_mock_schedule_data(env, *schedule_ids.get(1).unwrap(), schedule2_data);
 }

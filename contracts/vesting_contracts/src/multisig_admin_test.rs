@@ -1,5 +1,5 @@
 #![cfg(test)]
-use crate::{VestingContract, VestingContractClient, AdminAction, AdminProposal};
+use crate::{AdminAction, AdminProposal, VestingContract, VestingContractClient};
 use soroban_sdk::{testutils::Address as _, vec, Address, Env};
 
 #[test]

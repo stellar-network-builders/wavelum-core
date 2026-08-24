@@ -1,8 +1,8 @@
 // Issue #145 / #92 — Oracle-Verified KPI Vesting Triggers
 // KPI Engine: stores config, verifies oracle values, flips idempotent flag.
 
-use soroban_sdk::{contracttype, contractevent, symbol_short, Address, Env, Symbol, Vec};
 use crate::oracle::ComparisonOperator;
+use soroban_sdk::{contractevent, contracttype, symbol_short, Address, Env, Symbol, Vec};
 
 // ── Storage key symbols ───────────────────────────────────────────────────
 
@@ -43,7 +43,7 @@ pub struct KpiVerificationRecord {
     pub vault_id: u64,
     pub observed_value: i128,
     pub threshold: i128,
-    pub verified_at: u64,   // ledger timestamp
+    pub verified_at: u64,     // ledger timestamp
     pub verified_by: Address, // caller that triggered verification
 }
 
@@ -59,10 +59,7 @@ pub fn set_kpi_config(env: &Env, vault_id: u64, config: &KpiOracleConfig) {
 
 /// Read the idempotent KPI-met flag. Returns `false` if never written.
 pub fn is_kpi_met(env: &Env, vault_id: u64) -> bool {
-    env.storage()
-        .instance()
-        .get(&kpi_met_key(vault_id))
-        .unwrap_or(false)
+    env.storage().instance().get(&kpi_met_key(vault_id)).unwrap_or(false)
 }
 
 /// Write-once setter — once `true` it can NEVER be set back.
@@ -81,27 +78,19 @@ pub fn set_kpi_met(env: &Env, vault_id: u64, value: bool) {
         return;
     }
 
-    env.storage()
-        .instance()
-        .set(&kpi_met_key(vault_id), &value);
+    env.storage().instance().set(&kpi_met_key(vault_id), &value);
 }
 
 pub fn append_kpi_log(env: &Env, vault_id: u64, record: KpiVerificationRecord) {
     let key = kpi_log_key(vault_id);
-    let mut log: Vec<KpiVerificationRecord> = env
-        .storage()
-        .instance()
-        .get(&key)
-        .unwrap_or(Vec::new(env));
+    let mut log: Vec<KpiVerificationRecord> =
+        env.storage().instance().get(&key).unwrap_or(Vec::new(env));
     log.push_back(record);
     env.storage().instance().set(&key, &log);
 }
 
 pub fn get_kpi_log(env: &Env, vault_id: u64) -> Vec<KpiVerificationRecord> {
-    env.storage()
-        .instance()
-        .get(&kpi_log_key(vault_id))
-        .unwrap_or(Vec::new(env))
+    env.storage().instance().get(&kpi_log_key(vault_id)).unwrap_or(Vec::new(env))
 }
 
 // ── Oracle query ──────────────────────────────────────────────────────────
@@ -128,11 +117,11 @@ fn query_oracle_value(_env: &Env, config: &KpiOracleConfig) -> i128 {
 
 fn compare(current: i128, threshold: i128, op: &ComparisonOperator) -> bool {
     match op {
-        ComparisonOperator::GreaterThan          => current >  threshold,
-        ComparisonOperator::GreaterThanOrEqual   => current >= threshold,
-        ComparisonOperator::LessThan             => current <  threshold,
-        ComparisonOperator::LessThanOrEqual      => current <= threshold,
-        ComparisonOperator::Equal                => current == threshold,
+        ComparisonOperator::GreaterThan => current > threshold,
+        ComparisonOperator::GreaterThanOrEqual => current >= threshold,
+        ComparisonOperator::LessThan => current < threshold,
+        ComparisonOperator::LessThanOrEqual => current <= threshold,
+        ComparisonOperator::Equal => current == threshold,
     }
 }
 
@@ -154,8 +143,7 @@ pub fn verify_kpi(env: &Env, vault_id: u64, caller: &Address) -> bool {
         return true;
     }
 
-    let config = get_kpi_config(env, vault_id)
-        .expect("KPI config not set for this vault");
+    let config = get_kpi_config(env, vault_id).expect("KPI config not set for this vault");
 
     let live_value = query_oracle_value(env, &config);
     let condition_met = compare(live_value, config.threshold, &config.operator);
@@ -183,7 +171,8 @@ pub fn verify_kpi(env: &Env, vault_id: u64, caller: &Address) -> bool {
             live_value,
             threshold: config.threshold,
             timestamp: env.ledger().timestamp(),
-        }.publish(env);
+        }
+        .publish(env);
     }
 
     condition_met

@@ -2,9 +2,9 @@
 // Plugs into VestingContract::claim_tokens as an additional guard.
 // All token math stays in lib.rs — this module only enforces the KPI gate.
 
-use soroban_sdk::{contractevent, Address, Env, Symbol};
 use crate::kpi_engine::{self, KpiOracleConfig, KpiVerificationRecord};
 use crate::oracle::ComparisonOperator;
+use soroban_sdk::{contractevent, Address, Env, Symbol};
 
 // ── DataKey variants needed (added to lib.rs DataKey enum separately) ────
 // DataKey::KpiConfig(u64)  — stored by kpi_engine via tuple key
@@ -39,20 +39,11 @@ pub fn attach_kpi_gate(
         panic!("Cannot reconfigure a KPI gate that has already been verified");
     }
 
-    let config = KpiOracleConfig {
-        oracle_contract,
-        metric_id,
-        threshold,
-        operator,
-    };
+    let config = KpiOracleConfig { oracle_contract, metric_id, threshold, operator };
 
     kpi_engine::set_kpi_config(env, vault_id, &config);
 
-    KpiSetEvent {
-        vault_id,
-        threshold,
-        timestamp: env.ledger().timestamp(),
-    }.publish(env);
+    KpiSetEvent { vault_id, threshold, timestamp: env.ledger().timestamp() }.publish(env);
 }
 
 #[contractevent]
@@ -97,7 +88,5 @@ pub fn kpi_verification_log(env: &Env, vault_id: u64) -> soroban_sdk::Vec<KpiVer
 
 /// Read-only: returns the configured threshold for a vault, or 0 if none.
 pub fn kpi_threshold(env: &Env, vault_id: u64) -> i128 {
-    kpi_engine::get_kpi_config(env, vault_id)
-        .map(|c| c.threshold)
-        .unwrap_or(0)
+    kpi_engine::get_kpi_config(env, vault_id).map(|c| c.threshold).unwrap_or(0)
 }

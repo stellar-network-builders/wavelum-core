@@ -5,14 +5,7 @@ mod performance_cliff_tests {
         ComparisonOperator, Milestone, OracleClient, PerformanceCliff, VestingContract,
         VestingContractClient,
     };
-    use soroban_sdk::{
-        testutils::Address as _,
-        testutils::Ledger as _,
-        Address,
-        Env,
-        Symbol,
-        vec,
-    };
+    use soroban_sdk::{testutils::Address as _, testutils::Ledger as _, vec, Address, Env, Symbol};
 
     fn setup_test(env: &Env) -> (Address, Address, VestingContractClient<'static>) {
         env.mock_all_auths();
@@ -27,7 +20,7 @@ mod performance_cliff_tests {
         let token_admin = Address::generate(env);
         let token_addr = env.register_stellar_asset_contract_v2(token_admin).address();
         client.set_token(&token_addr);
-        
+
         let token_client = soroban_sdk::token::StellarAssetClient::new(env, &token_addr);
         token_client.mint(&admin, &1000000);
 
@@ -44,7 +37,7 @@ mod performance_cliff_tests {
         let tvl_condition = OracleClient::create_tvl_condition(
             oracle_address.clone(),
             1000000,
-            ComparisonOperator::GreaterThanOrEqual
+            ComparisonOperator::GreaterThanOrEqual,
         );
 
         let conditions = vec![&env, tvl_condition];
@@ -64,7 +57,7 @@ mod performance_cliff_tests {
             &true,
             &false,
             &0,
-            &cliff
+            &cliff,
         );
 
         // Verify cliff was set
@@ -92,14 +85,14 @@ mod performance_cliff_tests {
         let tvl_condition = OracleClient::create_tvl_condition(
             tvl_oracle,
             1000000,
-            ComparisonOperator::GreaterThanOrEqual
+            ComparisonOperator::GreaterThanOrEqual,
         );
 
         let price_condition = OracleClient::create_price_condition(
             price_oracle,
             100,
             ComparisonOperator::GreaterThan,
-            Some(Symbol::new(&env, "TOKEN"))
+            Some(Symbol::new(&env, "TOKEN")),
         );
 
         let conditions = vec![&env, tvl_condition, price_condition];
@@ -127,7 +120,7 @@ mod performance_cliff_tests {
             &true,
             &false,
             &0,
-            &and_cliff
+            &and_cliff,
         );
 
         let vault_id_or = client.create_vault_with_cliff(
@@ -139,7 +132,7 @@ mod performance_cliff_tests {
             &true,
             &false,
             &0,
-            &or_cliff
+            &or_cliff,
         );
 
         // Both should fail since oracle returns 0
@@ -157,7 +150,7 @@ mod performance_cliff_tests {
         let condition = OracleClient::create_tvl_condition(
             oracle_address,
             1000000,
-            ComparisonOperator::GreaterThanOrEqual
+            ComparisonOperator::GreaterThanOrEqual,
         );
 
         let conditions = vec![&env, condition];
@@ -176,7 +169,7 @@ mod performance_cliff_tests {
             &true,
             &false,
             &0,
-            &cliff
+            &cliff,
         );
 
         // Advance ledger time past fallback time
@@ -202,7 +195,7 @@ mod performance_cliff_tests {
         let condition = OracleClient::create_tvl_condition(
             oracle_address,
             1000000,
-            ComparisonOperator::GreaterThanOrEqual
+            ComparisonOperator::GreaterThanOrEqual,
         );
 
         let conditions = vec![&env, condition];
@@ -221,20 +214,12 @@ mod performance_cliff_tests {
             &true,
             &false,
             &0,
-            &cliff
+            &cliff,
         );
 
         // Set milestones
-        let milestone1 = Milestone {
-            id: 1,
-            percentage: 25,
-            is_unlocked: false,
-        };
-        let milestone2 = Milestone {
-            id: 2,
-            percentage: 50,
-            is_unlocked: false,
-        };
+        let milestone1 = Milestone { id: 1, percentage: 25, is_unlocked: false };
+        let milestone2 = Milestone { id: 2, percentage: 50, is_unlocked: false };
 
         let milestones = vec![&env, milestone1, milestone2];
         client.set_milestones(&vault_id, &milestones);

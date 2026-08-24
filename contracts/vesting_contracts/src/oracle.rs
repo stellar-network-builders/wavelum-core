@@ -1,23 +1,23 @@
-use soroban_sdk::{ contracttype, Address, Env, Symbol, Vec };
+use soroban_sdk::{contracttype, Address, Env, Symbol, Vec};
 
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum OracleType {
-    TVL, // Total Value Locked
-    Price, // Token price target
-    Custom, // Custom condition
+    TVL,           // Total Value Locked
+    Price,         // Token price target
+    Custom,        // Custom condition
     NetworkGrowth, // Network growth percentage for anti-dilution
-    Inflation, // Inflation rate for anti-dilution
+    Inflation,     // Inflation rate for anti-dilution
 }
 
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ComparisonOperator {
-    GreaterThan, // >
-    LessThan, // <
+    GreaterThan,        // >
+    LessThan,           // <
     GreaterThanOrEqual, // >=
-    LessThanOrEqual, // <=
-    Equal, // ==
+    LessThanOrEqual,    // <=
+    Equal,              // ==
 }
 
 #[contracttype]
@@ -34,7 +34,7 @@ pub struct OracleCondition {
 #[derive(Clone, Debug)]
 pub struct PerformanceCliff {
     pub conditions: Vec<OracleCondition>,
-    pub require_all: bool, // true = AND logic, false = OR logic
+    pub require_all: bool,  // true = AND logic, false = OR logic
     pub fallback_time: u64, // Fallback timestamp if oracle fails
 }
 
@@ -42,7 +42,7 @@ pub struct PerformanceCliff {
 #[derive(Clone, Debug)]
 pub struct PerformanceMultiplier {
     pub condition: OracleCondition,
-    pub multiplier_bps: u32,        // Basis points (e.g., 12000 = 1.2x)
+    pub multiplier_bps: u32,          // Basis points (e.g., 12000 = 1.2x)
     pub fallback_multiplier_bps: u32, // Basis points if condition not met (e.g., 10000 = 1.0x)
 }
 
@@ -62,12 +62,8 @@ impl OracleClient {
 
     pub fn is_cliff_passed(env: &Env, cliff: &PerformanceCliff, _vault_id: u64) -> bool {
         // First try to evaluate oracle conditions
-        if
-            let Some(result) = Self::evaluate_oracle_conditions(
-                env,
-                &cliff.conditions,
-                cliff.require_all
-            )
+        if let Some(result) =
+            Self::evaluate_oracle_conditions(env, &cliff.conditions, cliff.require_all)
         {
             return result;
         }
@@ -80,7 +76,7 @@ impl OracleClient {
     pub fn evaluate_oracle_conditions(
         env: &Env,
         conditions: &Vec<OracleCondition>,
-        require_all: bool
+        require_all: bool,
     ) -> Option<bool> {
         if conditions.is_empty() {
             return None;
@@ -90,11 +86,8 @@ impl OracleClient {
 
         for condition in conditions {
             let current_value = Self::query_oracle(env, &condition);
-            let condition_met = Self::compare_values(
-                current_value,
-                condition.target_value,
-                &condition.operator
-            );
+            let condition_met =
+                Self::compare_values(current_value, condition.target_value, &condition.operator);
             results.push_back(condition_met);
 
             // Short-circuit for OR logic
@@ -139,7 +132,7 @@ impl OracleClient {
     pub fn create_tvl_condition(
         oracle_address: Address,
         target_tvl: i128,
-        operator: ComparisonOperator
+        operator: ComparisonOperator,
     ) -> OracleCondition {
         OracleCondition {
             oracle_address,
@@ -154,7 +147,7 @@ impl OracleClient {
         oracle_address: Address,
         target_price: i128,
         operator: ComparisonOperator,
-        token_symbol: Option<Symbol>
+        token_symbol: Option<Symbol>,
     ) -> OracleCondition {
         OracleCondition {
             oracle_address,
@@ -169,7 +162,7 @@ impl OracleClient {
         oracle_address: Address,
         target_value: i128,
         operator: ComparisonOperator,
-        parameter: Symbol
+        parameter: Symbol,
     ) -> OracleCondition {
         OracleCondition {
             oracle_address,
@@ -183,7 +176,7 @@ impl OracleClient {
     pub fn create_network_growth_condition(
         oracle_address: Address,
         target_growth: i128,
-        operator: ComparisonOperator
+        operator: ComparisonOperator,
     ) -> OracleCondition {
         OracleCondition {
             oracle_address,
@@ -197,7 +190,7 @@ impl OracleClient {
     pub fn create_inflation_condition(
         oracle_address: Address,
         target_inflation: i128,
-        operator: ComparisonOperator
+        operator: ComparisonOperator,
     ) -> OracleCondition {
         OracleCondition {
             oracle_address,

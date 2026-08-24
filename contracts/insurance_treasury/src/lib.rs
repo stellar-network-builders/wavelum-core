@@ -1,32 +1,34 @@
 #![no_std]
 // Safety lint attributes for smart contract
 #![deny(unsafe_code)]
-#![warn(
-    missing_docs,
-    missing_debug_implementations,
-    unused_results,
-    clippy::all,
-    clippy::pedantic
-)]
+#![warn(missing_docs, missing_debug_implementations, unused_results, clippy::all, clippy::pedantic)]
 
-use soroban_sdk::{contract, contractimpl, Env, Address, Vec, Map, String, BytesN, IntoVal, token, panic_with_error};
+use soroban_sdk::{
+    contract, contractimpl, panic_with_error, token, Address, BytesN, Env, IntoVal, Map, String,
+    Vec,
+};
 
-mod types;
-mod storage;
 mod errors;
+mod storage;
+mod types;
 
-pub use types::*;
 use errors::Error;
 use storage::*;
+pub use types::*;
 
 #[contract]
 pub struct InsuranceTreasury;
 
 #[contractimpl]
 impl InsuranceTreasury {
-
     /// Initialize the insurance treasury with security council
-    pub fn initialize(e: Env, admin: Address, security_council: Vec<Address>, usdc: Address, xlm: Address) {
+    pub fn initialize(
+        e: Env,
+        admin: Address,
+        security_council: Vec<Address>,
+        usdc: Address,
+        xlm: Address,
+    ) {
         admin.require_auth();
 
         if security_council.len() != 5 {
@@ -60,11 +62,7 @@ impl InsuranceTreasury {
         set_balance(&e, &asset, balance);
 
         // Emit event
-        InsuranceFundCapitalized {
-            asset,
-            amount,
-            total_balance: balance,
-        }.publish(&e);
+        InsuranceFundCapitalized { asset, amount, total_balance: balance }.publish(&e);
     }
 
     /// Authorize a yield adapter to deposit (called by admin)
@@ -79,7 +77,13 @@ impl InsuranceTreasury {
     }
 
     /// Request a bailout (starts timelock)
-    pub fn request_bailout(e: Env, requester: Address, beneficiary: Address, asset: Address, amount: i128) {
+    pub fn request_bailout(
+        e: Env,
+        requester: Address,
+        beneficiary: Address,
+        asset: Address,
+        amount: i128,
+    ) {
         // Only security council can request
         let council = get_security_council(&e);
         if !council.contains(&requester) {
@@ -114,7 +118,8 @@ impl InsuranceTreasury {
             asset,
             amount,
             requested_at: request.requested_at,
-        }.publish(&e);
+        }
+        .publish(&e);
     }
 
     /// Sign a bailout request
@@ -178,7 +183,8 @@ impl InsuranceTreasury {
             asset: request.asset,
             amount: request.amount,
             executed_at: current_time,
-        }.publish(&e);
+        }
+        .publish(&e);
     }
 
     /// Handle partial clawback (edge case)
