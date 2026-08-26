@@ -1,7 +1,7 @@
-use soroban_sdk::{Env, Address, vec, IntoVal};
 use soroban_sdk::testutils::Address as _;
 use soroban_sdk::token::{Client as TokenClient, StellarAssetClient};
-use vesting_vault::{VestingVault, VestingVaultClient, ClaimEvent};
+use soroban_sdk::{vec, Address, Env, IntoVal};
+use vesting_vault::{ClaimEvent, VestingVault, VestingVaultClient};
 
 #[test]
 fn test_export_claims() {
@@ -22,7 +22,7 @@ fn test_export_claims() {
 
     // Initial supply to user1
     stellar_asset.mint(&user1, &1000i128);
-    
+
     // Proper way to call transfer in tests (not addr.invoke_stellar_asset_contract)
     stellar_asset.transfer(&user1, &user2, &100i128);
     assert_eq!(token.balance(&user2), 100);

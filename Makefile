@@ -1,3 +1,25 @@
+# Code quality targets
+
+fmt:
+	cargo fmt --all
+	cargo fmt --check --all
+	@echo "Format complete."
+
+lint:
+	cargo clippy --workspace --all-targets -- -D warnings
+	@echo "Lint complete."
+
+fmt-check:
+	cargo fmt --check --all
+	@echo "Format check complete."
+
+lint-check:
+	cargo clippy --workspace --all-targets -- -D warnings
+	@echo "Lint check complete."
+
+check: fmt-check lint-check
+	@echo "All checks complete."
+
 # Coverage target using cargo-llvm-cov
 coverage:
 	cargo install cargo-llvm-cov 2>/dev/null || true

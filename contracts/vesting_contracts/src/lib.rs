@@ -103,28 +103,18 @@ struct ReentrancyGuard {
 
 impl ReentrancyGuard {
     fn enter(env: &Env) -> Result<Self, Error> {
-        if env
-            .storage()
-            .instance()
-            .get(&DataKey::ReentrancyLock)
-            .unwrap_or(false)
-        {
+        if env.storage().instance().get(&DataKey::ReentrancyLock).unwrap_or(false) {
             return Err(Error::ReentrancyDetected);
         }
 
-        env.storage()
-            .instance()
-            .set(&DataKey::ReentrancyLock, &true);
+        env.storage().instance().set(&DataKey::ReentrancyLock, &true);
         Ok(Self { env: env.clone() })
     }
 }
 
 impl Drop for ReentrancyGuard {
     fn drop(&mut self) {
-        self.env
-            .storage()
-            .instance()
-            .set(&DataKey::ReentrancyLock, &false);
+        self.env.storage().instance().set(&DataKey::ReentrancyLock, &false);
     }
 }
 
@@ -713,18 +703,14 @@ impl VestingContract {
                 if new_admins.len() < quorum {
                     return Err(Error::InvalidInput);
                 }
-                env.storage()
-                    .instance()
-                    .set(&DataKey::AdminSet, &new_admins);
+                env.storage().instance().set(&DataKey::AdminSet, &new_admins);
             }
             AdminAction::UpdateQuorum(new_quorum) => {
                 let admins = Self::get_admins(env.clone());
                 if new_quorum == 0 || new_quorum > admins.len() as u32 {
                     return Err(Error::InvalidInput);
                 }
-                env.storage()
-                    .instance()
-                    .set(&DataKey::QuorumThreshold, &new_quorum);
+                env.storage().instance().set(&DataKey::QuorumThreshold, &new_quorum);
             }
             AdminAction::RevokeSchedule(vault_id, treasury) => {
                 Self::do_revoke_vault_internal(&env, vault_id, treasury.clone());
@@ -750,9 +736,7 @@ impl VestingContract {
                     total_amount: amount,
                     distributed_amount: 0,
                 };
-                env.storage()
-                    .instance()
-                    .set(&DataKey::SubAdminPool(manager), &pool);
+                env.storage().instance().set(&DataKey::SubAdminPool(manager), &pool);
                 let admin = Self::get_admin(env.clone());
                 token::Client::new(&env, &asset).transfer(
                     &admin,
@@ -770,9 +754,7 @@ impl VestingContract {
                 if env.storage().instance().has(&DataKey::MerkleRoot) {
                     return Err(Error::AlreadyInitialized);
                 }
-                env.storage()
-                    .instance()
-                    .set(&DataKey::MerkleRoot, &merkle_root);
+                env.storage().instance().set(&DataKey::MerkleRoot, &merkle_root);
                 MerkleRootInitialized {
                     merkle_root,
                     total_schedules,
@@ -818,26 +800,12 @@ impl VestingContract {
         }
         vault.end_time = env.ledger().timestamp();
         vault.is_frozen = true;
-        if env
-            .storage()
-            .instance()
-            .has(&DataKey::VaultMilestones(vault_id))
-        {
-            env.storage()
-                .instance()
-                .remove(&DataKey::VaultMilestones(vault_id));
+        if env.storage().instance().has(&DataKey::VaultMilestones(vault_id)) {
+            env.storage().instance().remove(&DataKey::VaultMilestones(vault_id));
         }
-        env.storage()
-            .instance()
-            .set(&DataKey::VaultData(vault_id), &vault);
-        let total_shares: i128 = env
-            .storage()
-            .instance()
-            .get(&DataKey::TotalShares)
-            .unwrap_or(0);
-        env.storage()
-            .instance()
-            .set(&DataKey::TotalShares, &(total_shares - remaining_total));
+        env.storage().instance().set(&DataKey::VaultData(vault_id), &vault);
+        let total_shares: i128 = env.storage().instance().get(&DataKey::TotalShares).unwrap_or(0);
+        env.storage().instance().set(&DataKey::TotalShares, &(total_shares - remaining_total));
         VaultRevoked {
             vault_id,
             owner: vault.owner,
@@ -854,11 +822,7 @@ impl VestingContract {
         for admin in admins.iter() {
             let sig_key = DataKey::AdminProposalSignature(proposal_id, admin.clone());
             if env.storage().instance().has(&sig_key)
-                && env
-                    .storage()
-                    .instance()
-                    .get::<_, bool>(&sig_key)
-                    .unwrap_or(false)
+                && env.storage().instance().get::<_, bool>(&sig_key).unwrap_or(false)
             {
                 count += 1;
             }
@@ -879,30 +843,19 @@ impl VestingContract {
             return Err(Error::ProposalAlreadyExecuted);
         }
         let sig_key = DataKey::AdminProposalSignature(proposal_id, signer.clone());
-        if env
-            .storage()
-            .instance()
-            .get::<_, bool>(&sig_key)
-            .unwrap_or(false)
-        {
+        if env.storage().instance().get::<_, bool>(&sig_key).unwrap_or(false) {
             return Err(Error::AlreadyVoted);
         }
         env.storage().instance().set(&sig_key, &true);
         let sig_count = Self::admin_proposal_signature_count(env.clone(), proposal_id);
         let quorum = Self::get_quorum_threshold(env.clone());
-        AdminProposalSigned {
-            proposal_id,
-            signer: signer.clone(),
-            signatures: sig_count,
-        }
-        .publish(&env);
+        AdminProposalSigned { proposal_id, signer: signer.clone(), signatures: sig_count }
+            .publish(&env);
 
         if sig_count >= quorum {
             let mut stored = proposal.clone();
             stored.is_executed = true;
-            env.storage()
-                .instance()
-                .set(&DataKey::AdminProposal(proposal_id), &stored);
+            env.storage().instance().set(&DataKey::AdminProposal(proposal_id), &stored);
             Self::dispatch_admin_action(env.clone(), proposal.action.clone());
             AdminProposalExecuted {
                 proposal_id,
@@ -930,13 +883,10 @@ impl VestingContract {
             created_at: now,
             is_executed: false,
         };
+        env.storage().instance().set(&DataKey::AdminProposal(proposal_id), &proposal);
         env.storage()
             .instance()
-            .set(&DataKey::AdminProposal(proposal_id), &proposal);
-        env.storage().instance().set(
-            &DataKey::AdminProposalSignature(proposal_id, proposer.clone()),
-            &true,
-        );
+            .set(&DataKey::AdminProposalSignature(proposal_id, proposer.clone()), &true);
         AdminProposalCreated {
             proposal_id,
             action: action.clone(),
@@ -949,34 +899,22 @@ impl VestingContract {
         if sig_count >= Self::get_quorum_threshold(env.clone()) {
             let mut stored = proposal;
             stored.is_executed = true;
-            env.storage()
-                .instance()
-                .set(&DataKey::AdminProposal(proposal_id), &stored);
+            env.storage().instance().set(&DataKey::AdminProposal(proposal_id), &stored);
             Self::dispatch_admin_action(env.clone(), action);
-            AdminProposalExecuted {
-                proposal_id,
-                action: stored.action,
-                executor: proposer,
-            }
-            .publish(&env);
+            AdminProposalExecuted { proposal_id, action: stored.action, executor: proposer }
+                .publish(&env);
         }
         proposal_id
     }
 
     /// Return the current list of admin addresses.
     pub fn get_admins(env: Env) -> Vec<Address> {
-        env.storage()
-            .instance()
-            .get(&DataKey::AdminSet)
-            .unwrap_or(Vec::new(&env))
+        env.storage().instance().get(&DataKey::AdminSet).unwrap_or(Vec::new(&env))
     }
 
     /// Return the current multisig quorum threshold.
     pub fn get_quorum_threshold(env: Env) -> u32 {
-        env.storage()
-            .instance()
-            .get(&DataKey::QuorumThreshold)
-            .unwrap_or(1u32)
+        env.storage().instance().get(&DataKey::QuorumThreshold).unwrap_or(1u32)
     }
 
     /// Returns `true` if `addr` is a registered admin.
@@ -995,25 +933,17 @@ impl VestingContract {
         let mut admins = Vec::new(&env);
         admins.push_back(admin.clone());
         env.storage().instance().set(&DataKey::AdminSet, &admins);
-        env.storage()
-            .instance()
-            .set(&DataKey::QuorumThreshold, &1u32);
+        env.storage().instance().set(&DataKey::QuorumThreshold, &1u32);
         env.storage().instance().set(&DataKey::AdminAddress, &admin);
-        env.storage()
-            .instance()
-            .set(&DataKey::AdminBalance, &initial_supply);
-        env.storage()
-            .instance()
-            .set(&DataKey::InitialSupply, &initial_supply);
+        env.storage().instance().set(&DataKey::AdminBalance, &initial_supply);
+        env.storage().instance().set(&DataKey::InitialSupply, &initial_supply);
         env.storage().instance().set(&DataKey::VaultCount, &0u64);
         env.storage().instance().set(&DataKey::IsPaused, &false);
         env.storage().instance().set(&DataKey::IsDeprecated, &false);
         env.storage().instance().set(&DataKey::TotalShares, &0i128);
         env.storage().instance().set(&DataKey::TotalStaked, &0i128);
         env.storage().instance().set(&DataKey::ProposalCount, &0u64);
-        env.storage()
-            .instance()
-            .set(&DataKey::TotalLockedValue, &initial_supply);
+        env.storage().instance().set(&DataKey::TotalLockedValue, &initial_supply);
     }
 
     /// Initialise the contract in multisig mode.
@@ -1038,27 +968,17 @@ impl VestingContract {
             return Err(Error::InvalidInput);
         }
         env.storage().instance().set(&DataKey::AdminSet, &admins);
-        env.storage()
-            .instance()
-            .set(&DataKey::QuorumThreshold, &quorum_threshold);
-        env.storage()
-            .instance()
-            .set(&DataKey::AdminAddress, &admins.get(0).unwrap());
-        env.storage()
-            .instance()
-            .set(&DataKey::AdminBalance, &initial_supply);
-        env.storage()
-            .instance()
-            .set(&DataKey::InitialSupply, &initial_supply);
+        env.storage().instance().set(&DataKey::QuorumThreshold, &quorum_threshold);
+        env.storage().instance().set(&DataKey::AdminAddress, &admins.get(0).unwrap());
+        env.storage().instance().set(&DataKey::AdminBalance, &initial_supply);
+        env.storage().instance().set(&DataKey::InitialSupply, &initial_supply);
         env.storage().instance().set(&DataKey::VaultCount, &0u64);
         env.storage().instance().set(&DataKey::IsPaused, &false);
         env.storage().instance().set(&DataKey::IsDeprecated, &false);
         env.storage().instance().set(&DataKey::TotalShares, &0i128);
         env.storage().instance().set(&DataKey::TotalStaked, &0i128);
         env.storage().instance().set(&DataKey::ProposalCount, &0u64);
-        env.storage()
-            .instance()
-            .set(&DataKey::TotalLockedValue, &initial_supply);
+        env.storage().instance().set(&DataKey::TotalLockedValue, &initial_supply);
     }
 
     /// Set the vesting token contract address (admin only).
@@ -1098,15 +1018,10 @@ impl VestingContract {
 
     /// Accept a pending admin-rotation proposal (called by the proposed new admin).
     pub fn accept_ownership(env: Env) {
-        let proposed: Address = env
-            .storage()
-            .instance()
-            .get(&DataKey::ProposedAdmin)
-            .expect("No proposed admin");
+        let proposed: Address =
+            env.storage().instance().get(&DataKey::ProposedAdmin).expect("No proposed admin");
         proposed.require_auth();
-        env.storage()
-            .instance()
-            .set(&DataKey::AdminAddress, &proposed);
+        env.storage().instance().set(&DataKey::AdminAddress, &proposed);
         env.storage().instance().remove(&DataKey::ProposedAdmin);
     }
 
@@ -1150,12 +1065,7 @@ impl VestingContract {
         }
 
         // Record vote
-        let vote = Vote {
-            voter: voter.clone(),
-            vote_weight,
-            is_yes,
-            voted_at: now,
-        };
+        let vote = Vote { voter: voter.clone(), vote_weight, is_yes, voted_at: now };
         env.storage().instance().set(&vote_key, &vote);
 
         // Update proposal vote counts
@@ -1165,18 +1075,10 @@ impl VestingContract {
             proposal.no_votes += vote_weight;
         }
 
-        env.storage()
-            .instance()
-            .set(&DataKey::GovernanceProposal(proposal_id), &proposal);
+        env.storage().instance().set(&DataKey::GovernanceProposal(proposal_id), &proposal);
 
         // Publish vote event
-        VoteCast {
-            proposal_id,
-            voter: voter.clone(),
-            vote_weight,
-            is_yes,
-        }
-        .publish(&env);
+        VoteCast { proposal_id, voter: voter.clone(), vote_weight, is_yes }.publish(&env);
     }
 
     /// Execute a governance proposal after the 72-hour challenge period has elapsed
@@ -1201,9 +1103,7 @@ impl VestingContract {
         if no_percentage >= VOTING_THRESHOLD as i128 {
             // Proposal is vetoed - cancel it
             proposal.is_cancelled = true;
-            env.storage()
-                .instance()
-                .set(&DataKey::GovernanceProposal(proposal_id), &proposal);
+            env.storage().instance().set(&DataKey::GovernanceProposal(proposal_id), &proposal);
             return;
         }
 
@@ -1211,16 +1111,10 @@ impl VestingContract {
         Self::execute_governance_action(&env, &proposal.action);
 
         proposal.is_executed = true;
-        env.storage()
-            .instance()
-            .set(&DataKey::GovernanceProposal(proposal_id), &proposal);
+        env.storage().instance().set(&DataKey::GovernanceProposal(proposal_id), &proposal);
 
         // Publish execution event
-        GovernanceActionExecuted {
-            proposal_id,
-            action: proposal.action.clone(),
-        }
-        .publish(&env);
+        GovernanceActionExecuted { proposal_id, action: proposal.action.clone() }.publish(&env);
     }
 
     // Legacy pause function - now requires governance proposal
@@ -1230,11 +1124,7 @@ impl VestingContract {
         if Self::multisig_active(&env) {
             return Err(Error::MultisigNotActive);
         }
-        let paused = env
-            .storage()
-            .instance()
-            .get(&DataKey::IsPaused)
-            .unwrap_or(false);
+        let paused = env.storage().instance().get(&DataKey::IsPaused).unwrap_or(false);
         env.storage().instance().set(&DataKey::IsPaused, &(!paused));
     }
 
@@ -1415,9 +1305,7 @@ impl VestingContract {
         }
 
         // Store the Merkle root
-        env.storage()
-            .instance()
-            .set(&DataKey::MerkleRoot, &merkle_root);
+        env.storage().instance().set(&DataKey::MerkleRoot, &merkle_root);
 
         MerkleRootInitialized {
             merkle_root,
@@ -1450,11 +1338,7 @@ impl VestingContract {
         }
 
         // Check if schedule already activated for this beneficiary
-        if env
-            .storage()
-            .instance()
-            .has(&DataKey::ActivatedSchedule(beneficiary.clone()))
-        {
+        if env.storage().instance().has(&DataKey::ActivatedSchedule(beneficiary.clone())) {
             return Err(Error::AlreadyInitialized);
         }
 
@@ -1479,9 +1363,7 @@ impl VestingContract {
         );
 
         // Mark schedule as activated for this beneficiary
-        env.storage()
-            .instance()
-            .set(&DataKey::ActivatedSchedule(beneficiary.clone()), &vault_id);
+        env.storage().instance().set(&DataKey::ActivatedSchedule(beneficiary.clone()), &vault_id);
 
         ScheduleActivatedWithProof {
             beneficiary: beneficiary.clone(),
@@ -1555,16 +1437,12 @@ impl VestingContract {
 
     /// Check if a beneficiary has already activated their schedule
     pub fn is_schedule_activated(env: Env, beneficiary: Address) -> bool {
-        env.storage()
-            .instance()
-            .has(&DataKey::ActivatedSchedule(beneficiary))
+        env.storage().instance().has(&DataKey::ActivatedSchedule(beneficiary))
     }
 
     /// Get the vault ID for an activated schedule
     pub fn get_activated_vault_id(env: Env, beneficiary: Address) -> Option<u64> {
-        env.storage()
-            .instance()
-            .get(&DataKey::ActivatedSchedule(beneficiary))
+        env.storage().instance().get(&DataKey::ActivatedSchedule(beneficiary))
     }
 
     /// Creates a vault with a diversified asset basket (pre-funded)
@@ -1633,9 +1511,7 @@ impl VestingContract {
             yield_destination: YieldDestination::Beneficiary,
         };
 
-        env.storage()
-            .instance()
-            .set(&DataKey::VaultData(vault_id), &vault);
+        env.storage().instance().set(&DataKey::VaultData(vault_id), &vault);
         Self::add_user_vault_index(&env, &owner, vault_id);
 
         vault_id
@@ -1697,9 +1573,7 @@ impl VestingContract {
             yield_destination: YieldDestination::Beneficiary,
         };
 
-        env.storage()
-            .instance()
-            .set(&DataKey::VaultData(vault_id), &vault);
+        env.storage().instance().set(&DataKey::VaultData(vault_id), &vault);
         Self::add_user_vault_index(&env, &owner, vault_id);
 
         vault_id
@@ -1725,9 +1599,7 @@ impl VestingContract {
         }
 
         vault.is_initialized = true;
-        env.storage()
-            .instance()
-            .set(&DataKey::VaultData(vault_id), &vault);
+        env.storage().instance().set(&DataKey::VaultData(vault_id), &vault);
     }
 
     /// Claims tokens from a diversified vesting vault
@@ -1892,9 +1764,7 @@ impl VestingContract {
                 // Update the allocation's released amount
                 let mut updated_allocation = allocation.clone();
                 updated_allocation.released_amount += claimable_amount;
-                vault
-                    .allocations
-                    .set(i.try_into().unwrap(), updated_allocation);
+                vault.allocations.set(i.try_into().unwrap(), updated_allocation);
 
                 // Transfer the tokens
                 token::Client::new(&env, &allocation.asset_id).transfer(
@@ -1918,9 +1788,7 @@ impl VestingContract {
 
         // Save updated vault before any external call so callbacks observe the
         // post-claim released amounts rather than stale state.
-        env.storage()
-            .instance()
-            .set(&DataKey::VaultData(vault_id), &vault);
+        env.storage().instance().set(&DataKey::VaultData(vault_id), &vault);
 
         // Check if vault is fully completed and register certificate
         Self::check_and_register_certificate(&env, vault_id, &vault);
@@ -1937,11 +1805,8 @@ impl VestingContract {
                     let yield_payout =
                         (total_claimable_sum * stake_info.accumulated_yield) / total_unreleased_sum;
                     if yield_payout > 0 {
-                        let token: Address = env
-                            .storage()
-                            .instance()
-                            .get(&DataKey::Token)
-                            .expect("Token not set");
+                        let token: Address =
+                            env.storage().instance().get(&DataKey::Token).expect("Token not set");
                         token::Client::new(&env, &token).transfer(
                             &staking_contract,
                             &vault.owner,
@@ -1956,11 +1821,7 @@ impl VestingContract {
         // -----------------------------------
 
         // Mint NFT if configured
-        if let Some(nft_minter) = env
-            .storage()
-            .instance()
-            .get::<_, Address>(&DataKey::NFTMinter)
-        {
+        if let Some(nft_minter) = env.storage().instance().get::<_, Address>(&DataKey::NFTMinter) {
             env.invoke_contract::<()>(
                 &nft_minter,
                 &Symbol::new(&env, "mint"),
@@ -2032,9 +1893,7 @@ impl VestingContract {
                     // Update the allocation's released amount
                     let mut updated_allocation = allocation.clone();
                     updated_allocation.released_amount += claimable_amount;
-                    vault
-                        .allocations
-                        .set(i.try_into().unwrap(), updated_allocation);
+                    vault.allocations.set(i.try_into().unwrap(), updated_allocation);
 
                     // Aggregate by asset ID (check if asset already exists in aggregated_claims)
                     let mut found_asset = false;
@@ -2060,9 +1919,7 @@ impl VestingContract {
 
             // Save updated vault if it had claims
             if vault_has_claims {
-                env.storage()
-                    .instance()
-                    .set(&DataKey::VaultData(*vault_id), &vault);
+                env.storage().instance().set(&DataKey::VaultData(*vault_id), &vault);
                 processed_vaults.push_back(*vault_id);
 
                 // Check if vault is fully completed and register certificate
@@ -2093,10 +1950,8 @@ impl VestingContract {
 
         // Mint NFT if configured (only once per batch claim)
         if !processed_vaults.is_empty() {
-            if let Some(nft_minter) = env
-                .storage()
-                .instance()
-                .get::<_, Address>(&DataKey::NFTMinter)
+            if let Some(nft_minter) =
+                env.storage().instance().get::<_, Address>(&DataKey::NFTMinter)
             {
                 env.invoke_contract::<()>(
                     &nft_minter,
@@ -2181,9 +2036,7 @@ impl VestingContract {
         updated_allocation.released_amount += claim_amount;
         vault.allocations.set(0, updated_allocation);
 
-        env.storage()
-            .instance()
-            .set(&DataKey::VaultData(vault_id), &vault);
+        env.storage().instance().set(&DataKey::VaultData(vault_id), &vault);
 
         // Check if vault is fully completed and register certificate
         Self::check_and_register_certificate(&env, vault_id, &vault);
@@ -2210,11 +2063,8 @@ impl VestingContract {
                 set_stake_info(&env, vault_id, &stake_info);
 
                 if yield_payout > 0 {
-                    let token: Address = env
-                        .storage()
-                        .instance()
-                        .get(&DataKey::Token)
-                        .expect("Token not set");
+                    let token: Address =
+                        env.storage().instance().get(&DataKey::Token).expect("Token not set");
                     token::Client::new(&env, &token).transfer(
                         &staking_contract,
                         &vault.owner,
@@ -2243,11 +2093,7 @@ impl VestingContract {
             &claim_amount,
         );
 
-        if let Some(nft_minter) = env
-            .storage()
-            .instance()
-            .get::<_, Address>(&DataKey::NFTMinter)
-        {
+        if let Some(nft_minter) = env.storage().instance().get::<_, Address>(&DataKey::NFTMinter) {
             env.invoke_contract::<()>(
                 &nft_minter,
                 &Symbol::new(&env, "mint"),
@@ -2265,11 +2111,7 @@ impl VestingContract {
         if Self::is_vault_fully_vested(env, vault_id, vault) {
             // Check if certificate already registered
             let certificate_id = U256::from_u128(env, vault_id as u128);
-            if !env
-                .storage()
-                .instance()
-                .has(&DataKey::CertificateRegistry(certificate_id))
-            {
+            if !env.storage().instance().has(&DataKey::CertificateRegistry(certificate_id)) {
                 // Calculate total claimed and asset information
                 let mut total_claimed = 0i128;
                 let mut total_assets = 0i128;
@@ -2323,17 +2165,12 @@ impl VestingContract {
         if Self::multisig_active(&env) {
             return Err(Error::MultisigNotActive);
         }
-        env.storage()
-            .instance()
-            .set(&DataKey::VaultMilestones(vault_id), &milestones);
+        env.storage().instance().set(&DataKey::VaultMilestones(vault_id), &milestones);
     }
 
     /// Return the milestone list for a vault.
     pub fn get_milestones(env: Env, vault_id: u64) -> Vec<Milestone> {
-        env.storage()
-            .instance()
-            .get(&DataKey::VaultMilestones(vault_id))
-            .unwrap_or(Vec::new(&env))
+        env.storage().instance().get(&DataKey::VaultMilestones(vault_id)).unwrap_or(Vec::new(&env))
     }
 
     /// Mark a milestone as completed, unlocking the associated token tranche (admin only).
@@ -2356,9 +2193,7 @@ impl VestingContract {
         if !found {
             return Err(Error::MilestoneNotCompleted);
         }
-        env.storage()
-            .instance()
-            .set(&DataKey::VaultMilestones(vault_id), &milestones);
+        env.storage().instance().set(&DataKey::VaultMilestones(vault_id), &milestones);
     }
 
     /// Freeze or unfreeze a vault, blocking all claims while frozen (admin only).
@@ -2369,9 +2204,7 @@ impl VestingContract {
         }
         let mut vault = Self::get_vault_internal(&env, vault_id);
         vault.is_frozen = freeze;
-        env.storage()
-            .instance()
-            .set(&DataKey::VaultData(vault_id), &vault);
+        env.storage().instance().set(&DataKey::VaultData(vault_id), &vault);
     }
 
     /// Pause a specific vesting schedule, blocking claims until resumed.
@@ -2380,26 +2213,16 @@ impl VestingContract {
         if Self::multisig_active(&env) {
             return Err(Error::MultisigNotActive);
         }
-        if env
-            .storage()
-            .instance()
-            .has(&DataKey::PausedVault(vault_id))
-        {
+        if env.storage().instance().has(&DataKey::PausedVault(vault_id)) {
             return Err(Error::ContractPaused);
         }
         let pause_info = PausedVault {
             vault_id,
             pause_timestamp: env.ledger().timestamp(),
-            pause_authority: env
-                .storage()
-                .instance()
-                .get(&DataKey::AdminAddress)
-                .unwrap(),
+            pause_authority: env.storage().instance().get(&DataKey::AdminAddress).unwrap(),
             reason,
         };
-        env.storage()
-            .instance()
-            .set(&DataKey::PausedVault(vault_id), &pause_info);
+        env.storage().instance().set(&DataKey::PausedVault(vault_id), &pause_info);
     }
 
     /// Resume a previously paused vesting schedule.
@@ -2408,16 +2231,10 @@ impl VestingContract {
         if Self::multisig_active(&env) {
             return Err(Error::MultisigNotActive);
         }
-        if !env
-            .storage()
-            .instance()
-            .has(&DataKey::PausedVault(vault_id))
-        {
+        if !env.storage().instance().has(&DataKey::PausedVault(vault_id)) {
             return Err(Error::InvalidInput);
         }
-        env.storage()
-            .instance()
-            .remove(&DataKey::PausedVault(vault_id));
+        env.storage().instance().remove(&DataKey::PausedVault(vault_id));
     }
 
     /// Set the address authorised to pause individual schedules (admin only).
@@ -2426,9 +2243,7 @@ impl VestingContract {
         if Self::multisig_active(&env) {
             return Err(Error::MultisigNotActive);
         }
-        env.storage()
-            .instance()
-            .set(&DataKey::PauseAuthority, &authority);
+        env.storage().instance().set(&DataKey::PauseAuthority, &authority);
     }
 
     /// Return the current pause authority address, or `None` if not set.
@@ -2438,16 +2253,12 @@ impl VestingContract {
 
     /// Returns `true` if the specified vault is currently paused.
     pub fn is_vault_paused(env: Env, vault_id: u64) -> bool {
-        env.storage()
-            .instance()
-            .has(&DataKey::PausedVault(vault_id))
+        env.storage().instance().has(&DataKey::PausedVault(vault_id))
     }
 
     /// Return the pause record for a vault, or `None` if not paused.
     pub fn get_paused_vault_info(env: Env, vault_id: u64) -> Option<PausedVault> {
-        env.storage()
-            .instance()
-            .get(&DataKey::PausedVault(vault_id))
+        env.storage().instance().get(&DataKey::PausedVault(vault_id))
     }
 
     /// Permanently mark a vault as irrevocable (admin only).
@@ -2460,9 +2271,7 @@ impl VestingContract {
         }
         let mut vault = Self::get_vault_internal(&env, vault_id);
         vault.is_irrevocable = true;
-        env.storage()
-            .instance()
-            .set(&DataKey::VaultData(vault_id), &vault);
+        env.storage().instance().set(&DataKey::VaultData(vault_id), &vault);
     }
 
     /// Configure a performance-based cliff condition for a vault (admin only).
@@ -2471,16 +2280,12 @@ impl VestingContract {
         if Self::multisig_active(&env) {
             return Err(Error::MultisigNotActive);
         }
-        env.storage()
-            .instance()
-            .set(&DataKey::VaultPerformanceCliff(vault_id), &cliff);
+        env.storage().instance().set(&DataKey::VaultPerformanceCliff(vault_id), &cliff);
     }
 
     /// Return the performance cliff configuration for a vault, or `None` if not set.
     pub fn get_performance_cliff(env: Env, vault_id: u64) -> Option<PerformanceCliff> {
-        env.storage()
-            .instance()
-            .get(&DataKey::VaultPerformanceCliff(vault_id))
+        env.storage().instance().get(&DataKey::VaultPerformanceCliff(vault_id))
     }
 
     /// Returns `true` if the performance cliff condition for a vault has been met.
@@ -2522,9 +2327,7 @@ impl VestingContract {
             is_transferable,
             step_duration,
         );
-        env.storage()
-            .instance()
-            .set(&DataKey::VaultPerformanceCliff(vault_id), &cliff);
+        env.storage().instance().set(&DataKey::VaultPerformanceCliff(vault_id), &cliff);
         vault_id
     }
 
@@ -2560,22 +2363,14 @@ impl VestingContract {
             panic!("InvalidSmoothingConfiguration: Smoothing duration must be between 1 day and 1 year");
         }
 
-        let config = CliffSmoothingConfig {
-            cliff_duration,
-            smoothing_duration,
-            cliff_percentage,
-        };
+        let config = CliffSmoothingConfig { cliff_duration, smoothing_duration, cliff_percentage };
 
-        env.storage()
-            .instance()
-            .set(&DataKey::CliffSmoothingConfig(vault_id), &config);
+        env.storage().instance().set(&DataKey::CliffSmoothingConfig(vault_id), &config);
     }
 
     /// Gets cliff smoothing configuration for a vault
     pub fn get_cliff_smoothing_config(env: Env, vault_id: u64) -> Option<CliffSmoothingConfig> {
-        env.storage()
-            .instance()
-            .get(&DataKey::CliffSmoothingConfig(vault_id))
+        env.storage().instance().get(&DataKey::CliffSmoothingConfig(vault_id))
     }
 
     /// Removes cliff smoothing configuration (admin only)
@@ -2585,14 +2380,8 @@ impl VestingContract {
             panic!("Use AdminProposal for multisig");
         }
 
-        if env
-            .storage()
-            .instance()
-            .has(&DataKey::CliffSmoothingConfig(vault_id))
-        {
-            env.storage()
-                .instance()
-                .remove(&DataKey::CliffSmoothingConfig(vault_id));
+        if env.storage().instance().has(&DataKey::CliffSmoothingConfig(vault_id)) {
+            env.storage().instance().remove(&DataKey::CliffSmoothingConfig(vault_id));
         }
     }
 
@@ -2638,15 +2427,9 @@ impl VestingContract {
             step_duration,
         );
 
-        let config = CliffSmoothingConfig {
-            cliff_duration,
-            smoothing_duration,
-            cliff_percentage,
-        };
+        let config = CliffSmoothingConfig { cliff_duration, smoothing_duration, cliff_percentage };
 
-        env.storage()
-            .instance()
-            .set(&DataKey::CliffSmoothingConfig(vault_id), &config);
+        env.storage().instance().set(&DataKey::CliffSmoothingConfig(vault_id), &config);
         vault_id
     }
 
@@ -2681,9 +2464,7 @@ impl VestingContract {
             max_adjustment_pct,
         };
 
-        env.storage()
-            .instance()
-            .set(&DataKey::AntiDilutionConfig(vault_id), &config);
+        env.storage().instance().set(&DataKey::AntiDilutionConfig(vault_id), &config);
     }
 
     /// Enables or disables anti-dilution for a vault (admin only)
@@ -2696,9 +2477,7 @@ impl VestingContract {
             .get::<_, AntiDilutionConfig>(&DataKey::AntiDilutionConfig(vault_id))
         {
             config.enabled = enabled;
-            env.storage()
-                .instance()
-                .set(&DataKey::AntiDilutionConfig(vault_id), &config);
+            env.storage().instance().set(&DataKey::AntiDilutionConfig(vault_id), &config);
         }
     }
 
@@ -2711,9 +2490,7 @@ impl VestingContract {
 
     /// Gets the latest network growth snapshot for a vault
     pub fn get_network_growth_snapshot(env: Env, vault_id: u64) -> Option<NetworkGrowthSnapshot> {
-        env.storage()
-            .instance()
-            .get(&DataKey::NetworkGrowthSnapshot(vault_id))
+        env.storage().instance().get(&DataKey::NetworkGrowthSnapshot(vault_id))
     }
 
     /// Manually triggers anti-dilution adjustment (admin only, for testing)
@@ -2731,18 +2508,14 @@ impl VestingContract {
         {
             let old_time = config.last_adjustment_time;
             config.last_adjustment_time = 0; // Force adjustment
-            env.storage()
-                .instance()
-                .set(&DataKey::AntiDilutionConfig(vault_id), &config);
+            env.storage().instance().set(&DataKey::AntiDilutionConfig(vault_id), &config);
 
             // Trigger calculation to apply adjustment
             Self::get_claimable_amount(env.clone(), vault_id);
 
             // Restore original time
             config.last_adjustment_time = old_time;
-            env.storage()
-                .instance()
-                .set(&DataKey::AntiDilutionConfig(vault_id), &config);
+            env.storage().instance().set(&DataKey::AntiDilutionConfig(vault_id), &config);
         }
     }
 
@@ -2789,9 +2562,7 @@ impl VestingContract {
 
                 let mut updated_allocation = allocation.clone();
                 updated_allocation.locked_amount += amount;
-                vault
-                    .allocations
-                    .set(i.try_into().unwrap(), updated_allocation);
+                vault.allocations.set(i.try_into().unwrap(), updated_allocation);
                 found = true;
                 break;
             }
@@ -2801,9 +2572,7 @@ impl VestingContract {
             return Err(Error::VaultNotFound);
         }
 
-        env.storage()
-            .instance()
-            .set(&DataKey::VaultData(vault_id), &vault);
+        env.storage().instance().set(&DataKey::VaultData(vault_id), &vault);
     }
 
     /// Legacy function for single-asset vaults
@@ -2838,9 +2607,7 @@ impl VestingContract {
 
                 let mut updated_allocation = allocation.clone();
                 updated_allocation.locked_amount -= amount;
-                vault
-                    .allocations
-                    .set(i.try_into().unwrap(), updated_allocation);
+                vault.allocations.set(i.try_into().unwrap(), updated_allocation);
                 found = true;
                 break;
             }
@@ -2850,9 +2617,7 @@ impl VestingContract {
             return Err(Error::VaultNotFound);
         }
 
-        env.storage()
-            .instance()
-            .set(&DataKey::VaultData(vault_id), &vault);
+        env.storage().instance().set(&DataKey::VaultData(vault_id), &vault);
     }
 
     /// Legacy function for single-asset vaults
@@ -2893,9 +2658,7 @@ impl VestingContract {
 
                 let mut updated_allocation = allocation.clone();
                 updated_allocation.locked_amount -= amount;
-                vault
-                    .allocations
-                    .set(i.try_into().unwrap(), updated_allocation);
+                vault.allocations.set(i.try_into().unwrap(), updated_allocation);
                 found = true;
                 break;
             }
@@ -2905,9 +2668,7 @@ impl VestingContract {
             return Err(Error::VaultNotFound);
         }
 
-        env.storage()
-            .instance()
-            .set(&DataKey::VaultData(vault_id), &vault);
+        env.storage().instance().set(&DataKey::VaultData(vault_id), &vault);
 
         token::Client::new(&env, &asset_id).transfer(
             &env.current_contract_address(),
@@ -2945,9 +2706,7 @@ impl VestingContract {
         }
 
         vault.allocations = new_basket;
-        env.storage()
-            .instance()
-            .set(&DataKey::VaultData(vault_id), &vault);
+        env.storage().instance().set(&DataKey::VaultData(vault_id), &vault);
     }
 
     /// Gets vault statistics for diversified vesting
@@ -2979,18 +2738,12 @@ impl VestingContract {
 
     /// Returns `true` if the contract is globally paused.
     pub fn is_paused(env: Env) -> bool {
-        env.storage()
-            .instance()
-            .get(&DataKey::IsPaused)
-            .unwrap_or(false)
+        env.storage().instance().get(&DataKey::IsPaused).unwrap_or(false)
     }
 
     /// Return the current admin address.
     pub fn get_admin(env: Env) -> Address {
-        env.storage()
-            .instance()
-            .get(&DataKey::AdminAddress)
-            .expect("Admin not set")
+        env.storage().instance().get(&DataKey::AdminAddress).expect("Admin not set")
     }
 
     /// Return the vault record for `vault_id`.
@@ -3005,28 +2758,18 @@ impl VestingContract {
 
     /// Return the current metadata anchor CID.
     pub fn get_metadata_anchor(env: Env) -> String {
-        env.storage()
-            .instance()
-            .get(&DataKey::MetadataAnchor)
-            .unwrap_or(String::from_str(&env, ""))
+        env.storage().instance().get(&DataKey::MetadataAnchor).unwrap_or(String::from_str(&env, ""))
     }
 
     /// Return all vault IDs owned by `user`.
     pub fn get_user_vaults(env: Env, user: Address) -> Vec<u64> {
-        env.storage()
-            .instance()
-            .get(&DataKey::UserVaults(user))
-            .unwrap_or(Vec::new(&env))
+        env.storage().instance().get(&DataKey::UserVaults(user)).unwrap_or(Vec::new(&env))
     }
 
     /// Return the governance voting power of `user` (= total unvested token balance).
     pub fn get_voting_power(env: Env, user: Address) -> i128 {
         // If this user has delegated their power to someone else, they have 0
-        if env
-            .storage()
-            .instance()
-            .has(&DataKey::VotingDelegate(user.clone()))
-        {
+        if env.storage().instance().has(&DataKey::VotingDelegate(user.clone())) {
             return 0;
         }
 
@@ -3050,10 +2793,8 @@ impl VestingContract {
         beneficiary.require_auth();
 
         // 1. Get current representative if any
-        let old_representative: Option<Address> = env
-            .storage()
-            .instance()
-            .get(&DataKey::VotingDelegate(beneficiary.clone()));
+        let old_representative: Option<Address> =
+            env.storage().instance().get(&DataKey::VotingDelegate(beneficiary.clone()));
 
         // 2. If same as before, do nothing
         if let Some(ref old) = old_representative {
@@ -3078,14 +2819,11 @@ impl VestingContract {
         // 3. Update to new representative
         // If representative is beneficiary itself, it means undelegate
         if beneficiary == representative {
+            env.storage().instance().remove(&DataKey::VotingDelegate(beneficiary.clone()));
+        } else {
             env.storage()
                 .instance()
-                .remove(&DataKey::VotingDelegate(beneficiary.clone()));
-        } else {
-            env.storage().instance().set(
-                &DataKey::VotingDelegate(beneficiary.clone()),
-                &representative,
-            );
+                .set(&DataKey::VotingDelegate(beneficiary.clone()), &representative);
 
             // Add to new representative's list
             let mut new_list: Vec<Address> = env
@@ -3128,36 +2866,18 @@ impl VestingContract {
         vault.step_duration = 0;
 
         // Reset milestones to prevent future unlocks from a reduced total
-        if env
-            .storage()
-            .instance()
-            .has(&DataKey::VaultMilestones(vault_id))
-        {
-            env.storage()
-                .instance()
-                .remove(&DataKey::VaultMilestones(vault_id));
+        if env.storage().instance().has(&DataKey::VaultMilestones(vault_id)) {
+            env.storage().instance().remove(&DataKey::VaultMilestones(vault_id));
         }
 
-        env.storage()
-            .instance()
-            .set(&DataKey::VaultData(vault_id), &vault);
+        env.storage().instance().set(&DataKey::VaultData(vault_id), &vault);
 
         // Update global tracking
-        let total_shares: i128 = env
-            .storage()
-            .instance()
-            .get(&DataKey::TotalShares)
-            .unwrap_or(0);
-        env.storage()
-            .instance()
-            .set(&DataKey::TotalShares, &(total_shares - unvested));
+        let total_shares: i128 = env.storage().instance().get(&DataKey::TotalShares).unwrap_or(0);
+        env.storage().instance().set(&DataKey::TotalShares, &(total_shares - unvested));
 
         // Transfer to community treasury
-        let token: Address = env
-            .storage()
-            .instance()
-            .get(&DataKey::Token)
-            .expect("Token not set");
+        let token: Address = env.storage().instance().get(&DataKey::Token).expect("Token not set");
         token::Client::new(&env, &token).transfer(
             &env.current_contract_address(),
             &treasury,
@@ -3186,9 +2906,7 @@ impl VestingContract {
         let mut approved = get_approved_staking_contracts(&env);
         if !approved.contains(&staking_contract) {
             approved.push_back(staking_contract);
-            env.storage()
-                .instance()
-                .set(&DataKey::ApprovedStakingContracts, &approved);
+            env.storage().instance().set(&DataKey::ApprovedStakingContracts, &approved);
         }
     }
 
@@ -3205,9 +2923,7 @@ impl VestingContract {
                 new_approved.push_back(a);
             }
         }
-        env.storage()
-            .instance()
-            .set(&DataKey::ApprovedStakingContracts, &new_approved);
+        env.storage().instance().set(&DataKey::ApprovedStakingContracts, &new_approved);
     }
 
     /// Return the list of whitelisted staking contracts.
@@ -3278,19 +2994,11 @@ impl VestingContract {
 
         // Update vault staked_amount
         vault.staked_amount = locked;
-        env.storage()
-            .instance()
-            .set(&DataKey::VaultData(vault_id), &vault);
+        env.storage().instance().set(&DataKey::VaultData(vault_id), &vault);
 
         // Update global staked counter
-        let total_staked: i128 = env
-            .storage()
-            .instance()
-            .get(&DataKey::TotalStaked)
-            .unwrap_or(0);
-        env.storage()
-            .instance()
-            .set(&DataKey::TotalStaked, &(total_staked + locked));
+        let total_staked: i128 = env.storage().instance().get(&DataKey::TotalStaked).unwrap_or(0);
+        env.storage().instance().set(&DataKey::TotalStaked, &(total_staked + locked));
 
         // Call the staking contract synchronously (Soroban: no async, direct call)
         call_stake_tokens(&env, &staking_contract, &vault.owner, vault_id, locked);
@@ -3355,11 +3063,8 @@ impl VestingContract {
 
         if yield_amount > 0 {
             // Transfer yield from staking contract to DAO treasury
-            let token: Address = env
-                .storage()
-                .instance()
-                .get(&DataKey::Token)
-                .expect("Token not set");
+            let token: Address =
+                env.storage().instance().get(&DataKey::Token).expect("Token not set");
             let treasury = Self::get_admin(env.clone());
             token::Client::new(&env, &token).transfer(&staking_contract, &treasury, &yield_amount);
         }
@@ -3423,36 +3128,21 @@ impl VestingContract {
                 for (i, allocation) in vault.allocations.iter().enumerate() {
                     let mut updated_allocation = allocation.clone();
                     updated_allocation.released_amount = allocation.total_amount;
-                    vault
-                        .allocations
-                        .set(i.try_into().unwrap(), updated_allocation);
+                    vault.allocations.set(i.try_into().unwrap(), updated_allocation);
                 }
                 vault.end_time = env.ledger().timestamp();
                 vault.step_duration = 0;
                 vault.is_frozen = true;
 
-                if env
-                    .storage()
-                    .instance()
-                    .has(&DataKey::VaultMilestones(vault_id))
-                {
-                    env.storage()
-                        .instance()
-                        .remove(&DataKey::VaultMilestones(vault_id));
+                if env.storage().instance().has(&DataKey::VaultMilestones(vault_id)) {
+                    env.storage().instance().remove(&DataKey::VaultMilestones(vault_id));
                 }
 
-                env.storage()
-                    .instance()
-                    .set(&DataKey::VaultData(vault_id), &vault);
+                env.storage().instance().set(&DataKey::VaultData(vault_id), &vault);
 
-                let total_shares: i128 = env
-                    .storage()
-                    .instance()
-                    .get(&DataKey::TotalShares)
-                    .unwrap_or(0);
-                env.storage()
-                    .instance()
-                    .set(&DataKey::TotalShares, &(total_shares - remaining));
+                let total_shares: i128 =
+                    env.storage().instance().get(&DataKey::TotalShares).unwrap_or(0);
+                env.storage().instance().set(&DataKey::TotalShares, &(total_shares - remaining));
 
                 total_revoked += remaining;
                 revoked_owners.push_back(vault.owner.clone());
@@ -3461,11 +3151,8 @@ impl VestingContract {
 
         // Transfer all revoked tokens to treasury in a single transaction
         if total_revoked > 0 {
-            let token: Address = env
-                .storage()
-                .instance()
-                .get(&DataKey::Token)
-                .expect("Token not set");
+            let token: Address =
+                env.storage().instance().get(&DataKey::Token).expect("Token not set");
             token::Client::new(&env, &token).transfer(
                 &env.current_contract_address(),
                 &treasury,
@@ -3541,11 +3228,7 @@ impl VestingContract {
         let penalty_amount = (unvested * penalty_pct as i128) / 100;
         let severance_amount = unvested - penalty_amount;
 
-        let token: Address = env
-            .storage()
-            .instance()
-            .get(&DataKey::Token)
-            .expect("Token not set");
+        let token: Address = env.storage().instance().get(&DataKey::Token).expect("Token not set");
         let token_client = token::Client::new(&env, &token);
 
         // Transfer penalty to treasury
@@ -3555,11 +3238,7 @@ impl VestingContract {
 
         // Transfer severance directly to beneficiary
         if severance_amount > 0 {
-            token_client.transfer(
-                &env.current_contract_address(),
-                &vault.owner,
-                &severance_amount,
-            );
+            token_client.transfer(&env.current_contract_address(), &vault.owner, &severance_amount);
         }
 
         // Update allocation: mark everything as released and freeze the vault
@@ -3572,28 +3251,14 @@ impl VestingContract {
 
         Self::mark_vault_revoked(&env, vault_id);
 
-        if env
-            .storage()
-            .instance()
-            .has(&DataKey::VaultMilestones(vault_id))
-        {
-            env.storage()
-                .instance()
-                .remove(&DataKey::VaultMilestones(vault_id));
+        if env.storage().instance().has(&DataKey::VaultMilestones(vault_id)) {
+            env.storage().instance().remove(&DataKey::VaultMilestones(vault_id));
         }
 
-        env.storage()
-            .instance()
-            .set(&DataKey::VaultData(vault_id), &vault);
+        env.storage().instance().set(&DataKey::VaultData(vault_id), &vault);
 
-        let total_shares: i128 = env
-            .storage()
-            .instance()
-            .get(&DataKey::TotalShares)
-            .unwrap_or(0);
-        env.storage()
-            .instance()
-            .set(&DataKey::TotalShares, &(total_shares - unvested));
+        let total_shares: i128 = env.storage().instance().get(&DataKey::TotalShares).unwrap_or(0);
+        env.storage().instance().set(&DataKey::TotalShares, &(total_shares - unvested));
 
         PartialRevocation {
             vault_id,
@@ -3668,11 +3333,7 @@ impl VestingContract {
         }
 
         // Transfer clawback amount to treasury
-        let token: Address = env
-            .storage()
-            .instance()
-            .get(&DataKey::Token)
-            .expect("Token not set");
+        let token: Address = env.storage().instance().get(&DataKey::Token).expect("Token not set");
         let token_client = token::Client::new(&env, &token);
 
         if clawback_amount > 0 {
@@ -3709,25 +3370,15 @@ impl VestingContract {
                 remaining_tokens,
             };
 
-            env.storage()
-                .instance()
-                .set(&DataKey::ClawbackAdjustment(vault_id), &clawback_data);
+            env.storage().instance().set(&DataKey::ClawbackAdjustment(vault_id), &clawback_data);
         }
 
         // Update total shares
-        let total_shares: i128 = env
-            .storage()
-            .instance()
-            .get(&DataKey::TotalShares)
-            .unwrap_or(0);
-        env.storage()
-            .instance()
-            .set(&DataKey::TotalShares, &(total_shares - clawback_amount));
+        let total_shares: i128 = env.storage().instance().get(&DataKey::TotalShares).unwrap_or(0);
+        env.storage().instance().set(&DataKey::TotalShares, &(total_shares - clawback_amount));
 
         // Save updated vault
-        env.storage()
-            .instance()
-            .set(&DataKey::VaultData(vault_id), &vault);
+        env.storage().instance().set(&DataKey::VaultData(vault_id), &vault);
 
         // Emit event
         PartialClawbackDynamic {
@@ -3742,17 +3393,16 @@ impl VestingContract {
 
     /// Get clawback adjustment data for a vault (for testing and inspection)
     pub fn get_clawback_adjustment(env: Env, vault_id: u64) -> ClawbackAdjustment {
-        env.storage()
-            .instance()
-            .get(&DataKey::ClawbackAdjustment(vault_id))
-            .unwrap_or(ClawbackAdjustment {
+        env.storage().instance().get(&DataKey::ClawbackAdjustment(vault_id)).unwrap_or(
+            ClawbackAdjustment {
                 clawback_time: 0,
                 clawback_amount: 0,
                 original_total_amount: 0,
                 original_rate: 0,
                 new_rate: 0,
                 remaining_tokens: 0,
-            })
+            },
+        )
     }
 
     /// Return the current stake status for a vault.
@@ -3784,14 +3434,7 @@ impl VestingContract {
         challenge_window: u64,
     ) {
         let vault = Self::get_vault_internal(&env, vault_id);
-        nominate_backup(
-            &env,
-            vault_id,
-            &vault.owner,
-            backup,
-            switch_duration,
-            challenge_window,
-        );
+        nominate_backup(&env, vault_id, &vault.owner, backup, switch_duration, challenge_window);
     }
 
     /// Revoke the nominated backup, resetting succession state to `None`.
@@ -3824,9 +3467,7 @@ impl VestingContract {
         // Update the vault's owner field to the new primary
         let mut vault = Self::get_vault_internal(&env, vault_id);
         vault.owner = new_owner;
-        env.storage()
-            .instance()
-            .set(&DataKey::VaultData(vault_id), &vault);
+        env.storage().instance().set(&DataKey::VaultData(vault_id), &vault);
     }
 
     /// Cancel a pending succession claim. Resets state to `Nominated`.
@@ -3848,20 +3489,15 @@ impl VestingContract {
     // --- Internal Helpers ---
 
     fn require_admin(env: &Env) {
-        let admin: Address = env
-            .storage()
-            .instance()
-            .get(&DataKey::AdminAddress)
-            .expect("Admin not set");
+        let admin: Address =
+            env.storage().instance().get(&DataKey::AdminAddress).expect("Admin not set");
         admin.require_auth();
     }
 
     fn require_pause_authority(env: &Env) {
         // Check if there's a designated pause authority
-        if let Some(authority) = env
-            .storage()
-            .instance()
-            .get::<DataKey, Address>(&DataKey::PauseAuthority)
+        if let Some(authority) =
+            env.storage().instance().get::<DataKey, Address>(&DataKey::PauseAuthority)
         {
             authority.require_auth();
         } else {
@@ -3871,21 +3507,13 @@ impl VestingContract {
     }
 
     fn require_not_paused(env: &Env) {
-        if env
-            .storage()
-            .instance()
-            .get(&DataKey::IsPaused)
-            .unwrap_or(false)
-        {
+        if env.storage().instance().get(&DataKey::IsPaused).unwrap_or(false) {
             return Err(Error::ContractPaused);
         }
     }
 
     fn is_emergency_pause_active(env: &Env) -> bool {
-        env.storage()
-            .instance()
-            .get(&DataKey::IsPaused)
-            .unwrap_or(false)
+        env.storage().instance().get(&DataKey::IsPaused).unwrap_or(false)
     }
 
     fn _require_collateral_bridge(env: &Env) {
@@ -3951,11 +3579,7 @@ impl VestingContract {
         step_duration: u64,
     ) -> u64 {
         // For backward compatibility, create a single-asset vault
-        let token: Address = env
-            .storage()
-            .instance()
-            .get(&DataKey::Token)
-            .expect("Token not set");
+        let token: Address = env.storage().instance().get(&DataKey::Token).expect("Token not set");
         let allocation = AssetAllocationEntry {
             asset_id: token.clone(),
             total_amount: amount,
@@ -3995,11 +3619,7 @@ impl VestingContract {
         step_duration: u64,
     ) -> u64 {
         // For backward compatibility, create a single-asset vault
-        let token: Address = env
-            .storage()
-            .instance()
-            .get(&DataKey::Token)
-            .expect("Token not set");
+        let token: Address = env.storage().instance().get(&DataKey::Token).expect("Token not set");
         let allocation = AssetAllocationEntry {
             asset_id: token,
             total_amount: amount,
@@ -4060,9 +3680,7 @@ impl VestingContract {
             legal_documents_signed: true, // Default to true for backward compatibility
             yield_destination: YieldDestination::Beneficiary,
         };
-        env.storage()
-            .instance()
-            .set(&DataKey::VaultData(id), &vault);
+        env.storage().instance().set(&DataKey::VaultData(id), &vault);
         if is_initialized {
             Self::add_user_vault_index(env, &owner, id);
         }
@@ -4072,70 +3690,39 @@ impl VestingContract {
     }
 
     fn get_vault_internal(env: &Env, id: u64) -> Vault {
-        env.storage()
-            .instance()
-            .get(&DataKey::VaultData(id))
-            .expect("Vault not found")
+        env.storage().instance().get(&DataKey::VaultData(id)).expect("Vault not found")
     }
 
     fn increment_vault_count(env: &Env) -> u64 {
-        let count: u64 = env
-            .storage()
-            .instance()
-            .get(&DataKey::VaultCount)
-            .unwrap_or(0);
+        let count: u64 = env.storage().instance().get(&DataKey::VaultCount).unwrap_or(0);
         let new_count = count + 1;
-        env.storage()
-            .instance()
-            .set(&DataKey::VaultCount, &new_count);
+        env.storage().instance().set(&DataKey::VaultCount, &new_count);
         new_count
     }
 
     fn sub_admin_balance(env: &Env, amount: i128) {
-        let bal: i128 = env
-            .storage()
-            .instance()
-            .get(&DataKey::AdminBalance)
-            .unwrap_or(0);
+        let bal: i128 = env.storage().instance().get(&DataKey::AdminBalance).unwrap_or(0);
         if bal < amount {
             return Err(Error::InsufficientBalance);
         }
-        env.storage()
-            .instance()
-            .set(&DataKey::AdminBalance, &(bal - amount));
+        env.storage().instance().set(&DataKey::AdminBalance, &(bal - amount));
     }
 
     fn reserve_admin_balance_for_batch(env: &Env, amount: i128) {
-        let bal: i128 = env
-            .storage()
-            .instance()
-            .get(&DataKey::AdminBalance)
-            .unwrap_or(0);
+        let bal: i128 = env.storage().instance().get(&DataKey::AdminBalance).unwrap_or(0);
         if bal < amount {
             return Err(Error::InsufficientBalance);
         }
-        env.storage()
-            .instance()
-            .set(&DataKey::AdminBalance, &(bal - amount));
+        env.storage().instance().set(&DataKey::AdminBalance, &(bal - amount));
     }
 
     fn add_total_shares(env: &Env, amount: i128) {
-        let shares: i128 = env
-            .storage()
-            .instance()
-            .get(&DataKey::TotalShares)
-            .unwrap_or(0);
-        env.storage()
-            .instance()
-            .set(&DataKey::TotalShares, &(shares + amount));
+        let shares: i128 = env.storage().instance().get(&DataKey::TotalShares).unwrap_or(0);
+        env.storage().instance().set(&DataKey::TotalShares, &(shares + amount));
     }
 
     fn require_deposited_tokens_for_batch(env: &Env, amount: i128) {
-        let token: Address = env
-            .storage()
-            .instance()
-            .get(&DataKey::Token)
-            .expect("Token not set");
+        let token: Address = env.storage().instance().get(&DataKey::Token).expect("Token not set");
         let contract_address = env.current_contract_address();
         let onchain_balance = token::Client::new(env, &token).balance(&contract_address);
         if onchain_balance < amount {
@@ -4173,9 +3760,7 @@ impl VestingContract {
             let end_time = data.end_times.get(i).unwrap();
             VestingContract::require_valid_duration(start_time, end_time);
 
-            total_amount = total_amount
-                .checked_add(basket_total)
-                .expect("Batch amount overflow");
+            total_amount = total_amount.checked_add(basket_total).expect("Batch amount overflow");
         }
         total_amount
     }
@@ -4200,9 +3785,8 @@ impl VestingContract {
             Self::require_valid_duration(schedule.start_time, schedule.end_time);
 
             VestingContract::require_valid_duration(schedule.start_time, schedule.end_time);
-            total_amount = total_amount
-                .checked_add(schedule_total)
-                .expect("Schedule amount overflow");
+            total_amount =
+                total_amount.checked_add(schedule_total).expect("Schedule amount overflow");
         }
         total_amount
     }
@@ -4225,9 +3809,8 @@ impl VestingContract {
                 }
             }
 
-            total_share_bps = total_share_bps
-                .checked_add(split.share_bps)
-                .expect("Split share overflow");
+            total_share_bps =
+                total_share_bps.checked_add(split.share_bps).expect("Split share overflow");
         }
 
         if total_share_bps != 10000 {
@@ -4298,9 +3881,7 @@ impl VestingContract {
                 .expect("Split multiplication overflow");
             let amount = product / 10000i128;
             amounts.push_back(amount);
-            distributed = distributed
-                .checked_add(amount)
-                .expect("Split accumulation overflow");
+            distributed = distributed.checked_add(amount).expect("Split accumulation overflow");
         }
 
         let mut remainder = total_amount - distributed;
@@ -4321,15 +3902,10 @@ impl VestingContract {
     }
 
     fn add_user_vault_index(env: &Env, user: &Address, id: u64) {
-        let mut vaults: Vec<u64> = env
-            .storage()
-            .instance()
-            .get(&DataKey::UserVaults(user.clone()))
-            .unwrap_or(vec![env]);
+        let mut vaults: Vec<u64> =
+            env.storage().instance().get(&DataKey::UserVaults(user.clone())).unwrap_or(vec![env]);
         vaults.push_back(id);
-        env.storage()
-            .instance()
-            .set(&DataKey::UserVaults(user.clone()), &vaults);
+        env.storage().instance().set(&DataKey::UserVaults(user.clone()), &vaults);
     }
 
     fn remove_user_vault_index(env: &Env, user: &Address, id: u64) {
@@ -4344,9 +3920,7 @@ impl VestingContract {
                 new_vaults.push_back(v);
             }
         }
-        env.storage()
-            .instance()
-            .set(&DataKey::UserVaults(user.clone()), &new_vaults);
+        env.storage().instance().set(&DataKey::UserVaults(user.clone()), &new_vaults);
     }
 
     fn calculate_user_own_power(env: &Env, user: &Address) -> i128 {
@@ -4383,25 +3957,17 @@ impl VestingContract {
         };
 
         // Update global staked counter
-        let total_staked: i128 = env
-            .storage()
-            .instance()
-            .get(&DataKey::TotalStaked)
-            .unwrap_or(0);
+        let total_staked: i128 = env.storage().instance().get(&DataKey::TotalStaked).unwrap_or(0);
         let new_total = if total_staked > stake_info.tokens_staked {
             total_staked - stake_info.tokens_staked
         } else {
             0
         };
-        env.storage()
-            .instance()
-            .set(&DataKey::TotalStaked, &new_total);
+        env.storage().instance().set(&DataKey::TotalStaked, &new_total);
 
         let unstaked_amount = stake_info.tokens_staked;
         vault.staked_amount = 0;
-        env.storage()
-            .instance()
-            .set(&DataKey::VaultData(vault_id), vault);
+        env.storage().instance().set(&DataKey::VaultData(vault_id), vault);
 
         stake_info.tokens_staked = 0;
         stake_info.stake_state = StakeState::Unstaked;
@@ -4414,26 +3980,18 @@ impl VestingContract {
 
     /// Mark a vault as revoked in the global revoked-vaults set.
     fn mark_vault_revoked(env: &Env, vault_id: u64) {
-        let mut revoked: Vec<u64> = env
-            .storage()
-            .instance()
-            .get(&DataKey::RevokedVaults)
-            .unwrap_or(Vec::new(env));
+        let mut revoked: Vec<u64> =
+            env.storage().instance().get(&DataKey::RevokedVaults).unwrap_or(Vec::new(env));
         if !revoked.contains(&vault_id) {
             revoked.push_back(vault_id);
-            env.storage()
-                .instance()
-                .set(&DataKey::RevokedVaults, &revoked);
+            env.storage().instance().set(&DataKey::RevokedVaults, &revoked);
         }
     }
 
     /// Returns `true` if the vault has been revoked.
     fn is_vault_revoked(env: &Env, vault_id: u64) -> bool {
-        let revoked: Vec<u64> = env
-            .storage()
-            .instance()
-            .get(&DataKey::RevokedVaults)
-            .unwrap_or(Vec::new(env));
+        let revoked: Vec<u64> =
+            env.storage().instance().get(&DataKey::RevokedVaults).unwrap_or(Vec::new(env));
         revoked.contains(&vault_id)
     }
 
@@ -4481,16 +4039,9 @@ impl VestingContract {
         vault: &Vault,
         asset_index: usize,
     ) -> i128 {
-        let allocation = vault
-            .allocations
-            .get(asset_index.try_into().unwrap())
-            .unwrap();
+        let allocation = vault.allocations.get(asset_index.try_into().unwrap()).unwrap();
 
-        if let Some(cliff) = env
-            .storage()
-            .instance()
-            .get(&DataKey::VaultPerformanceCliff(id))
-        {
+        if let Some(cliff) = env.storage().instance().get(&DataKey::VaultPerformanceCliff(id)) {
             if !OracleClient::is_cliff_passed(env, &cliff, id) {
                 return 0;
             }
@@ -4498,18 +4049,13 @@ impl VestingContract {
 
         let mut now = env.ledger().timestamp();
 
-        if let Some(paused_info) = env
-            .storage()
-            .instance()
-            .get::<DataKey, PausedVault>(&DataKey::PausedVault(id))
+        if let Some(paused_info) =
+            env.storage().instance().get::<DataKey, PausedVault>(&DataKey::PausedVault(id))
         {
             now = paused_info.pause_timestamp;
         } else {
-            let accel_pct: u32 = env
-                .storage()
-                .instance()
-                .get(&DataKey::GlobalAccelerationPct)
-                .unwrap_or(0u32);
+            let accel_pct: u32 =
+                env.storage().instance().get(&DataKey::GlobalAccelerationPct).unwrap_or(0u32);
             if accel_pct > 0 {
                 let duration_u64 = vault.end_time.saturating_sub(vault.start_time);
                 let shift = ((duration_u64 as i128) * (accel_pct as i128) / 100) as u64;
@@ -4846,9 +4392,7 @@ impl VestingContract {
                 last_adjustment_time: current_time,
                 ..config
             };
-            env.storage()
-                .instance()
-                .set(&DataKey::AntiDilutionConfig(vault_id), &updated_config);
+            env.storage().instance().set(&DataKey::AntiDilutionConfig(vault_id), &updated_config);
 
             // Store snapshot for tracking
             let snapshot = NetworkGrowthSnapshot {
@@ -4856,9 +4400,7 @@ impl VestingContract {
                 network_value: network_growth,
                 adjustment_factor: total_adjustment,
             };
-            env.storage()
-                .instance()
-                .set(&DataKey::NetworkGrowthSnapshot(vault_id), &snapshot);
+            env.storage().instance().set(&DataKey::NetworkGrowthSnapshot(vault_id), &snapshot);
 
             adjusted_vested
         } else {
@@ -4885,9 +4427,7 @@ impl VestingContract {
             no_votes: 0,
         };
 
-        env.storage()
-            .instance()
-            .set(&DataKey::GovernanceProposal(proposal_id), &proposal);
+        env.storage().instance().set(&DataKey::GovernanceProposal(proposal_id), &proposal);
 
         // Publish proposal creation event (minimal tuple to avoid IntoVal issues)
         GovernanceProposalCreated {
@@ -4902,15 +4442,9 @@ impl VestingContract {
     }
 
     fn increment_admin_proposal_count(env: &Env) -> u64 {
-        let count: u64 = env
-            .storage()
-            .instance()
-            .get(&DataKey::AdminProposalCount)
-            .unwrap_or(0);
+        let count: u64 = env.storage().instance().get(&DataKey::AdminProposalCount).unwrap_or(0);
         let new_count = count + 1;
-        env.storage()
-            .instance()
-            .set(&DataKey::AdminProposalCount, &new_count);
+        env.storage().instance().set(&DataKey::AdminProposalCount, &new_count);
         new_count
     }
 
@@ -4948,43 +4482,28 @@ impl VestingContract {
     }
 
     fn get_total_locked_value(env: &Env) -> i128 {
-        env.storage()
-            .instance()
-            .get(&DataKey::TotalLockedValue)
-            .unwrap_or(0i128)
+        env.storage().instance().get(&DataKey::TotalLockedValue).unwrap_or(0i128)
     }
 
     fn execute_governance_action(env: &Env, action: &GovernanceAction) {
         match action {
             GovernanceAction::AdminRotation(new_admin) => {
-                env.storage()
-                    .instance()
-                    .set(&DataKey::AdminAddress, new_admin);
+                env.storage().instance().set(&DataKey::AdminAddress, new_admin);
             }
             GovernanceAction::ContractUpgrade(new_contract) => {
-                env.storage()
-                    .instance()
-                    .set(&DataKey::MigrationTarget, new_contract);
+                env.storage().instance().set(&DataKey::MigrationTarget, new_contract);
                 env.storage().instance().set(&DataKey::IsDeprecated, &true);
             }
             GovernanceAction::EmergencyPause(pause_state) => {
-                env.storage()
-                    .instance()
-                    .set(&DataKey::IsPaused, pause_state);
+                env.storage().instance().set(&DataKey::IsPaused, pause_state);
             }
         }
     }
 
     fn increment_proposal_count(env: &Env) -> u64 {
-        let count: u64 = env
-            .storage()
-            .instance()
-            .get(&DataKey::ProposalCount)
-            .unwrap_or(0);
+        let count: u64 = env.storage().instance().get(&DataKey::ProposalCount).unwrap_or(0);
         let new_count = count + 1;
-        env.storage()
-            .instance()
-            .set(&DataKey::ProposalCount, &new_count);
+        env.storage().instance().set(&DataKey::ProposalCount, &new_count);
         new_count
     }
 
@@ -5025,13 +4544,8 @@ impl VestingContract {
         if !vault.is_transferable {
             return Err(Error::VaultFrozen);
         }
-        let lock = MarketplaceLock {
-            marketplace,
-            authorized_at: env.ledger().timestamp(),
-        };
-        env.storage()
-            .instance()
-            .set(&DataKey::MarketplaceLock(vault_id), &lock);
+        let lock = MarketplaceLock { marketplace, authorized_at: env.ledger().timestamp() };
+        env.storage().instance().set(&DataKey::MarketplaceLock(vault_id), &lock);
     }
 
     /// Complete a marketplace transfer, updating the vault owner to `new_owner`.
@@ -5048,26 +4562,17 @@ impl VestingContract {
 
         // Update owner
         vault.owner = new_owner.clone();
-        env.storage()
-            .instance()
-            .set(&DataKey::VaultData(vault_id), &vault);
+        env.storage().instance().set(&DataKey::VaultData(vault_id), &vault);
 
         // Update indexes
         Self::remove_user_vault_index(&env, &old_owner, vault_id);
         Self::add_user_vault_index(&env, &new_owner, vault_id);
 
         // Clear lock
-        env.storage()
-            .instance()
-            .remove(&DataKey::MarketplaceLock(vault_id));
+        env.storage().instance().remove(&DataKey::MarketplaceLock(vault_id));
 
-        MarketplaceSold {
-            vault_id,
-            old_owner,
-            new_owner,
-            marketplace: lock.marketplace,
-        }
-        .publish(&env);
+        MarketplaceSold { vault_id, old_owner, new_owner, marketplace: lock.marketplace }
+            .publish(&env);
     }
 
     // --- Renewal Functions (#91) ---
@@ -5096,16 +4601,10 @@ impl VestingContract {
         vault.allocations.set(0, allocation);
         vault.end_time += additional_duration;
 
-        env.storage()
-            .instance()
-            .set(&DataKey::VaultData(vault_id), &vault);
+        env.storage().instance().set(&DataKey::VaultData(vault_id), &vault);
 
-        VaultRenewed {
-            vault_id,
-            duration: additional_duration,
-            amount: additional_amount,
-        }
-        .publish(env);
+        VaultRenewed { vault_id, duration: additional_duration, amount: additional_amount }
+            .publish(env);
     }
 
     /// Extend a vesting schedule by `additional_duration` seconds and deposit
@@ -5214,9 +4713,7 @@ impl VestingContract {
             current_milestone: 0,
             triggered_milestones: Vec::new(&env),
         };
-        env.storage()
-            .instance()
-            .set(&DataKey::VaultMilestones(vault_id), &milestone_data);
+        env.storage().instance().set(&DataKey::VaultMilestones(vault_id), &milestone_data);
 
         vault_id
     }
@@ -5250,10 +4747,7 @@ impl VestingContract {
         // Exception: milestone 0 can always be triggered (first milestone)
         if milestone_id > 0 {
             let previous_milestone = milestone_id - 1;
-            if !milestone_data
-                .triggered_milestones
-                .contains(&previous_milestone)
-            {
+            if !milestone_data.triggered_milestones.contains(&previous_milestone) {
                 panic!(
                     "Cannot trigger milestone {} - previous milestone {} must be triggered first",
                     milestone_id, previous_milestone
@@ -5266,9 +4760,7 @@ impl VestingContract {
         milestone_data.current_milestone = milestone_id;
 
         // Store updated milestone data
-        env.storage()
-            .instance()
-            .set(&DataKey::VaultMilestones(vault_id), &milestone_data);
+        env.storage().instance().set(&DataKey::VaultMilestones(vault_id), &milestone_data);
 
         // Emit milestone event
         crate::milestone::MilestoneEvent {
@@ -5338,18 +4830,13 @@ impl VestingContract {
 
         for (i, allocation) in vault.allocations.iter().enumerate() {
             let available = allocation.total_amount - allocation.released_amount;
-            let to_release = if available < remaining_to_release {
-                available
-            } else {
-                remaining_to_release
-            };
+            let to_release =
+                if available < remaining_to_release { available } else { remaining_to_release };
 
             if to_release > 0 {
                 let mut updated_allocation = allocation.clone();
                 updated_allocation.released_amount += to_release;
-                vault
-                    .allocations
-                    .set(i.try_into().unwrap(), updated_allocation);
+                vault.allocations.set(i.try_into().unwrap(), updated_allocation);
                 remaining_to_release -= to_release;
             }
 
@@ -5358,9 +4845,7 @@ impl VestingContract {
             }
         }
 
-        env.storage()
-            .instance()
-            .set(&DataKey::VaultData(vault_id), &vault);
+        env.storage().instance().set(&DataKey::VaultData(vault_id), &vault);
 
         // Transfer tokens to beneficiary
         if vault.allocations.len() == 1 {
@@ -5391,9 +4876,7 @@ impl VestingContract {
 
     /// Get milestone data for a vault
     pub fn get_milestone_data(env: Env, vault_id: u64) -> Option<crate::milestone::MilestoneData> {
-        env.storage()
-            .instance()
-            .get(&DataKey::VaultMilestones(vault_id))
+        env.storage().instance().get(&DataKey::VaultMilestones(vault_id))
     }
 
     // --- Zero-Knowledge Accredited Investor Verification Functions ---
@@ -5760,9 +5243,7 @@ impl VestingContract {
         let mut vault = Self::get_vault_internal(&env, vault_id);
         let old_beneficiary = vault.owner.clone();
         vault.owner = new_beneficiary;
-        env.storage()
-            .instance()
-            .set(&DataKey::VaultData(vault_id), &vault);
+        env.storage().instance().set(&DataKey::VaultData(vault_id), &vault);
 
         // Update user vault index
         Self::remove_user_vault_index(&env, &old_beneficiary, vault_id);
@@ -6018,9 +5499,7 @@ impl VestingContract {
         updated_allocation.released_amount += claim_amount;
         vault.allocations.set(0, updated_allocation);
 
-        env.storage()
-            .instance()
-            .set(&DataKey::VaultData(vault_id), &vault);
+        env.storage().instance().set(&DataKey::VaultData(vault_id), &vault);
 
         // Check if vault is fully completed and register certificate
         Self::check_and_register_certificate(&env, vault_id, &vault);
@@ -6031,11 +5510,7 @@ impl VestingContract {
         };
 
         // Mint NFT if configured
-        if let Some(nft_minter) = env
-            .storage()
-            .instance()
-            .get::<_, Address>(&DataKey::NFTMinter)
-        {
+        if let Some(nft_minter) = env.storage().instance().get::<_, Address>(&DataKey::NFTMinter) {
             env.invoke_contract::<()>(
                 &nft_minter,
                 &Symbol::new(&env, "mint"),
@@ -6076,9 +5551,7 @@ impl VestingContract {
             enabled: true,
         };
 
-        env.storage()
-            .instance()
-            .set(&DataKey::PathPaymentConfig, &config);
+        env.storage().instance().set(&DataKey::PathPaymentConfig, &config);
 
         // Emit configuration event
         PathPaymentConfigured {
@@ -6097,21 +5570,14 @@ impl VestingContract {
             return Err(Error::MultisigNotActive);
         }
 
-        if let Some(mut config) = env
-            .storage()
-            .instance()
-            .get::<_, PathPaymentConfig>(&DataKey::PathPaymentConfig)
+        if let Some(mut config) =
+            env.storage().instance().get::<_, PathPaymentConfig>(&DataKey::PathPaymentConfig)
         {
             config.enabled = false;
-            env.storage()
-                .instance()
-                .set(&DataKey::PathPaymentConfig, &config);
+            env.storage().instance().set(&DataKey::PathPaymentConfig, &config);
 
             // Emit disable event
-            PathPaymentDisabled {
-                timestamp: env.ledger().timestamp(),
-            }
-            .publish(&env);
+            PathPaymentDisabled { timestamp: env.ledger().timestamp() }.publish(&env);
         }
     }
 
@@ -6125,14 +5591,12 @@ impl VestingContract {
         Self::require_not_paused(&env);
 
         // Get path payment configuration
-        let config = match env
-            .storage()
-            .instance()
-            .get::<_, PathPaymentConfig>(&DataKey::PathPaymentConfig)
-        {
-            Some(c) => c,
-            None => return Err(Error::PathPaymentNotConfigured),
-        };
+        let config =
+            match env.storage().instance().get::<_, PathPaymentConfig>(&DataKey::PathPaymentConfig)
+            {
+                Some(c) => c,
+                None => return Err(Error::PathPaymentNotConfigured),
+            };
 
         if !config.enabled {
             return Err(Error::PathPaymentDisabled);
@@ -6289,22 +5753,17 @@ impl VestingContract {
 
         // Update vault allocations
         for (i, allocation) in vault.allocations.iter().enumerate() {
-            if let Some((_, claimable_amount)) = claimable_assets
-                .iter()
-                .find(|(asset_id, _)| asset_id == &allocation.asset_id)
+            if let Some((_, claimable_amount)) =
+                claimable_assets.iter().find(|(asset_id, _)| asset_id == &allocation.asset_id)
             {
                 let mut updated_allocation = allocation.clone();
                 updated_allocation.released_amount += claimable_amount;
-                vault
-                    .allocations
-                    .set(i.try_into().unwrap(), updated_allocation);
+                vault.allocations.set(i.try_into().unwrap(), updated_allocation);
             }
         }
 
         // Save updated vault
-        env.storage()
-            .instance()
-            .set(&DataKey::VaultData(vault_id), &vault);
+        env.storage().instance().set(&DataKey::VaultData(vault_id), &vault);
 
         // Check if vault is fully completed and register certificate
         Self::check_and_register_certificate(&env, vault_id, &vault);
@@ -6320,11 +5779,7 @@ impl VestingContract {
         Self::invoke_path_payment_hops(&env, vault_id, source_amount, &config);
 
         // Mint NFT if configured
-        if let Some(nft_minter) = env
-            .storage()
-            .instance()
-            .get::<_, Address>(&DataKey::NFTMinter)
-        {
+        if let Some(nft_minter) = env.storage().instance().get::<_, Address>(&DataKey::NFTMinter) {
             env.invoke_contract::<()>(
                 &nft_minter,
                 &Symbol::new(&env, "mint"),
@@ -6357,9 +5812,7 @@ impl VestingContract {
             .get::<_, Vec<PathPaymentClaimEvent>>(&DataKey::PathPaymentClaimHistory)
             .unwrap_or(Vec::new(&env));
         history.push_back(path_payment_event.clone());
-        env.storage()
-            .instance()
-            .set(&DataKey::PathPaymentClaimHistory, &history);
+        env.storage().instance().set(&DataKey::PathPaymentClaimHistory, &history);
 
         // Emit the path payment claim event
         PathPaymentClaimExecuted {
@@ -6420,24 +5873,22 @@ impl VestingContract {
         }
 
         // Get path payment configuration
-        let config = match env
-            .storage()
-            .instance()
-            .get::<_, PathPaymentConfig>(&DataKey::PathPaymentConfig)
-        {
-            Some(c) => c,
-            None => {
-                return PathPaymentSimulation {
-                    source_amount: 0,
-                    estimated_destination_amount: 0,
-                    min_destination_amount: min_destination_amount.unwrap_or(0),
-                    path: Vec::new(&env),
-                    can_execute: false,
-                    reason: String::from_str(&env, "Path payment not configured"),
-                    estimated_gas_fee: 0,
-                };
-            }
-        };
+        let config =
+            match env.storage().instance().get::<_, PathPaymentConfig>(&DataKey::PathPaymentConfig)
+            {
+                Some(c) => c,
+                None => {
+                    return PathPaymentSimulation {
+                        source_amount: 0,
+                        estimated_destination_amount: 0,
+                        min_destination_amount: min_destination_amount.unwrap_or(0),
+                        path: Vec::new(&env),
+                        can_execute: false,
+                        reason: String::from_str(&env, "Path payment not configured"),
+                        estimated_gas_fee: 0,
+                    };
+                }
+            };
 
         if !config.enabled {
             return PathPaymentSimulation {
@@ -6515,10 +5966,7 @@ impl VestingContract {
 
     /// Get path payment claim history
     pub fn get_path_payment_claim_history(env: Env) -> Vec<PathPaymentClaimEvent> {
-        env.storage()
-            .instance()
-            .get(&DataKey::PathPaymentClaimHistory)
-            .unwrap_or(Vec::new(&env))
+        env.storage().instance().get(&DataKey::PathPaymentClaimHistory).unwrap_or(Vec::new(&env))
     }
 
     // Private helper methods for legal document integration

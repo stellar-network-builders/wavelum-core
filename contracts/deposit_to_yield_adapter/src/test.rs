@@ -1,8 +1,8 @@
-use soroban_sdk::{vec, Address, Env, String};
 use crate::{
-    DepositToYieldAdapter, LendingProtocol, YieldPosition, VaultYieldSummary,
-    AdapterDataKey, AdapterError
+    AdapterDataKey, AdapterError, DepositToYieldAdapter, LendingProtocol, VaultYieldSummary,
+    YieldPosition,
 };
+use soroban_sdk::{vec, Address, Env, String};
 
 #[test]
 fn test_initialization() {
@@ -11,16 +11,23 @@ fn test_initialization() {
     let vesting_contract = Address::random(&env);
     let yield_treasury = Address::random(&env);
 
-    DepositToYieldAdapter::initialize(env.clone(), admin.clone(), vesting_contract.clone(), yield_treasury.clone());
+    DepositToYieldAdapter::initialize(
+        env.clone(),
+        admin.clone(),
+        vesting_contract.clone(),
+        yield_treasury.clone(),
+    );
 
     // Verify storage
     let stored_admin: Address = env.storage().instance().get(&AdapterDataKey::Admin).unwrap();
     assert_eq!(stored_admin, admin);
 
-    let stored_vesting: Address = env.storage().instance().get(&AdapterDataKey::VestingContract).unwrap();
+    let stored_vesting: Address =
+        env.storage().instance().get(&AdapterDataKey::VestingContract).unwrap();
     assert_eq!(stored_vesting, vesting_contract);
 
-    let stored_treasury: Address = env.storage().instance().get(&AdapterDataKey::YieldTreasury).unwrap();
+    let stored_treasury: Address =
+        env.storage().instance().get(&AdapterDataKey::YieldTreasury).unwrap();
     assert_eq!(stored_treasury, yield_treasury);
 
     let is_paused: bool = env.storage().instance().get(&AdapterDataKey::IsPaused).unwrap();

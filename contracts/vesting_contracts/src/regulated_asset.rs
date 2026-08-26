@@ -1,14 +1,5 @@
 #![no_std]
-use soroban_sdk::{
-    contracttype,
-    contracterror,
-    Address,
-    Env,
-    Vec,
-    String,
-    Symbol,
-    BytesN,
-};
+use soroban_sdk::{contracterror, contracttype, Address, BytesN, Env, String, Symbol, Vec};
 
 /// SEP-08 regulated asset errors
 #[contracterror]
@@ -141,7 +132,8 @@ impl RegulatedAssetManager {
             requires_authorization,
             supports_freeze,
             supports_clawback,
-        }.publish(env);
+        }
+        .publish(env);
 
         Ok(())
     }
@@ -194,7 +186,9 @@ impl RegulatedAssetManager {
 
         // Verify issuer is authorized for this asset
         let reg_key = (ASSET_REGULATIONS, asset_id.clone());
-        let regulation: AssetRegulation = env.storage().persistent()
+        let regulation: AssetRegulation = env
+            .storage()
+            .persistent()
             .get(&reg_key)
             .ok_or(RegulatedAssetError::AssetNotRegulated)?;
 
@@ -231,7 +225,8 @@ impl RegulatedAssetManager {
             authorization_id,
             expires_at,
             issuer,
-        }.publish(env);
+        }
+        .publish(env);
 
         Ok(())
     }
@@ -246,7 +241,9 @@ impl RegulatedAssetManager {
     ) -> Result<(), RegulatedAssetError> {
         // Get authorization
         let auth_key = (SEP08_AUTHORIZATIONS, authorization_id.clone());
-        let authorization: SEP08Authorization = env.storage().persistent()
+        let authorization: SEP08Authorization = env
+            .storage()
+            .persistent()
             .get(&auth_key)
             .ok_or(RegulatedAssetError::AuthorizationRequired)?;
 
@@ -279,13 +276,11 @@ impl RegulatedAssetManager {
     }
 
     /// Consume authorization amount (after successful transfer)
-    pub fn consume_authorization(
-        env: &Env,
-        authorization_id: BytesN<32>,
-        amount: i128,
-    ) {
+    pub fn consume_authorization(env: &Env, authorization_id: BytesN<32>, amount: i128) {
         let auth_key = (SEP08_AUTHORIZATIONS, authorization_id.clone());
-        if let Some(mut authorization) = env.storage().persistent().get::<_, SEP08Authorization>(&auth_key) {
+        if let Some(mut authorization) =
+            env.storage().persistent().get::<_, SEP08Authorization>(&auth_key)
+        {
             authorization.used_amount += amount;
             env.storage().persistent().set(&auth_key, &authorization);
 
@@ -294,7 +289,8 @@ impl RegulatedAssetManager {
                 authorization_id,
                 amount,
                 remaining: authorization.authorized_amount - authorization.used_amount,
-            }.publish(env);
+            }
+            .publish(env);
         }
     }
 
@@ -322,19 +318,15 @@ impl RegulatedAssetManager {
         };
 
         // Store freeze event
-        let freeze_key = (FREEZE_EVENTS, asset_id.clone(), holder.clone(), env.ledger().timestamp());
+        let freeze_key =
+            (FREEZE_EVENTS, asset_id.clone(), holder.clone(), env.ledger().timestamp());
         env.storage().persistent().set(&freeze_key, &freeze_event);
 
         // Update all active authorizations for this holder/asset to frozen
         Self::update_authorizations_status(env, asset_id, holder, AuthorizationStatus::Frozen);
 
         // Emit freeze event
-        AssetFrozen {
-            asset_id,
-            holder,
-            amount,
-            reason,
-        }.publish(env);
+        AssetFrozen { asset_id, holder, amount, reason }.publish(env);
 
         Ok(())
     }
@@ -363,19 +355,20 @@ impl RegulatedAssetManager {
         };
 
         // Store clawback event
-        let clawback_key = (CLAWBACK_EVENTS, asset_id.clone(), from_holder.clone(), env.ledger().timestamp());
+        let clawback_key =
+            (CLAWBACK_EVENTS, asset_id.clone(), from_holder.clone(), env.ledger().timestamp());
         env.storage().persistent().set(&clawback_key, &clawback_event);
 
         // Revoke all active authorizations for this holder/asset
-        Self::update_authorizations_status(env, asset_id, from_holder, AuthorizationStatus::Revoked);
-
-        // Emit clawback event
-        AssetClawback {
+        Self::update_authorizations_status(
+            env,
             asset_id,
             from_holder,
-            amount,
-            reason,
-        }.publish(env);
+            AuthorizationStatus::Revoked,
+        );
+
+        // Emit clawback event
+        AssetClawback { asset_id, from_holder, amount, reason }.publish(env);
 
         Ok(())
     }
@@ -388,7 +381,9 @@ impl RegulatedAssetManager {
         reason: String,
     ) -> Result<(), RegulatedAssetError> {
         let auth_key = (SEP08_AUTHORIZATIONS, authorization_id.clone());
-        let mut authorization: SEP08Authorization = env.storage().persistent()
+        let mut authorization: SEP08Authorization = env
+            .storage()
+            .persistent()
             .get(&auth_key)
             .ok_or(RegulatedAssetError::InvalidAuthorization)?;
 
@@ -402,11 +397,7 @@ impl RegulatedAssetManager {
         env.storage().persistent().set(&auth_key, &authorization);
 
         // Emit revocation event
-        AuthorizationRevoked {
-            authorization_id,
-            issuer,
-            reason,
-        }.publish(env);
+        AuthorizationRevoked { authorization_id, issuer, reason }.publish(env);
 
         Ok(())
     }
@@ -418,7 +409,10 @@ impl RegulatedAssetManager {
     }
 
     /// Get authorization by ID
-    pub fn get_authorization(env: &Env, authorization_id: BytesN<32>) -> Option<SEP08Authorization> {
+    pub fn get_authorization(
+        env: &Env,
+        authorization_id: BytesN<32>,
+    ) -> Option<SEP08Authorization> {
         let auth_key = (SEP08_AUTHORIZATIONS, authorization_id);
         env.storage().persistent().get(&auth_key)
     }

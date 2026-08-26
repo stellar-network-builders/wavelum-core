@@ -7,7 +7,9 @@ use soroban_sdk::{
     Vec,
 };
 
-use vesting_contracts::{VestingContract, VestingContractClient, AdminAction, ScheduleConfig, AssetAllocationEntry};
+use vesting_contracts::{
+    AdminAction, AssetAllocationEntry, ScheduleConfig, VestingContract, VestingContractClient,
+};
 
 #[contract]
 struct MultisigAccount;
@@ -28,12 +30,8 @@ enum MultisigError {
 #[contractimpl]
 impl MultisigAccount {
     pub fn init(env: Env, signers: Vec<Address>, threshold: u32) {
-        env.storage()
-            .instance()
-            .set(&MultisigDataKey::Signers, &signers);
-        env.storage()
-            .instance()
-            .set(&MultisigDataKey::Threshold, &threshold);
+        env.storage().instance().set(&MultisigDataKey::Signers, &signers);
+        env.storage().instance().set(&MultisigDataKey::Threshold, &threshold);
     }
 }
 
@@ -48,16 +46,9 @@ impl CustomAccountInterface for MultisigAccount {
         signatures: Vec<Address>,
         auth_contexts: Vec<Context>,
     ) -> Result<(), Self::Error> {
-        let allowed: Vec<Address> = env
-            .storage()
-            .instance()
-            .get(&MultisigDataKey::Signers)
-            .unwrap_or(Vec::new(&env));
-        let threshold: u32 = env
-            .storage()
-            .instance()
-            .get(&MultisigDataKey::Threshold)
-            .unwrap_or(0);
+        let allowed: Vec<Address> =
+            env.storage().instance().get(&MultisigDataKey::Signers).unwrap_or(Vec::new(&env));
+        let threshold: u32 = env.storage().instance().get(&MultisigDataKey::Threshold).unwrap_or(0);
 
         let mut allowed_map: Map<Address, bool> = Map::new(&env);
         for addr in allowed.iter() {
@@ -166,13 +157,16 @@ fn create_vault_succeeds_with_multisig_admin_threshold_met() {
 
     let cfg = ScheduleConfig {
         owner: beneficiary.clone(),
-        asset_basket: soroban_sdk::vec![&env, AssetAllocationEntry {
-            asset_id: token,
-            total_amount: amount,
-            released_amount: 0,
-            locked_amount: 0,
-            percentage: 10000,
-        }],
+        asset_basket: soroban_sdk::vec![
+            &env,
+            AssetAllocationEntry {
+                asset_id: token,
+                total_amount: amount,
+                released_amount: 0,
+                locked_amount: 0,
+                percentage: 10000,
+            }
+        ],
         start_time: start,
         end_time: end,
         keeper_fee,

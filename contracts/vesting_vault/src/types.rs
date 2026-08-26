@@ -1,4 +1,4 @@
-use soroban_sdk::{contracttype, contractevent, Address, Vec, Map, String, BytesN, Bytes};
+use soroban_sdk::{contractevent, contracttype, Address, Bytes, BytesN, Map, String, Vec};
 
 #[contracttype]
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -145,8 +145,8 @@ pub struct ClaimSimulation {
 #[contracttype]
 #[derive(Clone)]
 pub struct TaxConfig {
-    pub tax_bps: u32, // basis points (10000 = 100%)
-    pub authority: Address, // tax authority receiving payments
+    pub tax_bps: u32,               // basis points (10000 = 100%)
+    pub authority: Address,         // tax authority receiving payments
     pub tax_asset: Option<Address>, // if Some, tax must be paid in this asset (may require swap)
 }
 

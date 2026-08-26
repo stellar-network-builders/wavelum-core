@@ -1,18 +1,13 @@
 #![cfg(test)]
-use soroban_sdk::{
-    Address,
-    Env,
-    Vec,
-    String,
-};
 use crate::{
     beneficiary_reassignment::{
-        BeneficiaryReassignment, ReassignmentError, ReassignmentRequest, ReassignmentStatus,
-        SocialProofType, DAOMember, ReassignmentConfig, BeneficiaryReassignmentTrait,
-        REASSIGNMENT_REQUESTS, DAO_MEMBERS, REASSIGNMENT_CONFIG, VAULT_REASSIGNMENTS,
+        BeneficiaryReassignment, BeneficiaryReassignmentTrait, DAOMember, ReassignmentConfig,
+        ReassignmentError, ReassignmentRequest, ReassignmentStatus, SocialProofType, DAO_MEMBERS,
+        REASSIGNMENT_CONFIG, REASSIGNMENT_REQUESTS, VAULT_REASSIGNMENTS,
     },
-    testutils::{create_test_contract, create_test_address, create_test_env},
+    testutils::{create_test_address, create_test_contract, create_test_env},
 };
+use soroban_sdk::{Address, Env, String, Vec};
 
 #[test]
 fn test_initialize_beneficiary_reassignment() {
@@ -23,12 +18,12 @@ fn test_initialize_beneficiary_reassignment() {
     let member2 = create_test_address(&env);
 
     let initial_members = Vec::from_array(&env, &[member1.clone(), member2.clone()]);
-    
+
     let result = BeneficiaryReassignment::initialize(
         &env,
         admin.clone(),
         initial_members.clone(),
-        2, // required_approvals
+        2,                // required_approvals
         7 * 24 * 60 * 60, // 7 days approval window
     );
 
@@ -58,13 +53,7 @@ fn test_create_reassignment_request() {
     // Initialize DAO first
     let admin = create_test_address(&env);
     let members = Vec::from_array(&env, &[admin.clone()]);
-    BeneficiaryReassignment::initialize(
-        &env,
-        admin,
-        members,
-        2,
-        7 * 24 * 60 * 60,
-    ).unwrap();
+    BeneficiaryReassignment::initialize(&env, admin, members, 2, 7 * 24 * 60 * 60).unwrap();
 
     let result = BeneficiaryReassignment::create_reassignment_request(
         &env,
@@ -100,13 +89,7 @@ fn test_approve_reassignment() {
     let admin = create_test_address(&env);
     let council_member = create_test_address(&env);
     let members = Vec::from_array(&env, &[admin.clone(), council_member.clone()]);
-    BeneficiaryReassignment::initialize(
-        &env,
-        admin,
-        members,
-        2,
-        7 * 24 * 60 * 60,
-    ).unwrap();
+    BeneficiaryReassignment::initialize(&env, admin, members, 2, 7 * 24 * 60 * 60).unwrap();
 
     BeneficiaryReassignment::create_reassignment_request(
         &env,
@@ -117,14 +100,12 @@ fn test_approve_reassignment() {
         [0x02; 32],
         "QmDeathCert456".to_string(),
         "Beneficiary passed away".to_string(),
-    ).unwrap();
+    )
+    .unwrap();
 
     // Approve the request
-    let result = BeneficiaryReassignment::approve_reassignment(
-        &env,
-        council_member.clone(),
-        vault_id,
-    );
+    let result =
+        BeneficiaryReassignment::approve_reassignment(&env, council_member.clone(), vault_id);
 
     assert!(result.is_ok());
 
@@ -157,7 +138,8 @@ fn test_approve_reassignment_insufficient_approvals() {
         members,
         2, // requires 2 approvals
         7 * 24 * 60 * 60,
-    ).unwrap();
+    )
+    .unwrap();
 
     BeneficiaryReassignment::create_reassignment_request(
         &env,
@@ -168,14 +150,12 @@ fn test_approve_reassignment_insufficient_approvals() {
         [0x01; 32],
         "QmLostKeys123".to_string(),
         "Lost keys".to_string(),
-    ).unwrap();
+    )
+    .unwrap();
 
     // Approve with only one member (should not complete)
-    let result = BeneficiaryReassignment::approve_reassignment(
-        &env,
-        council_member.clone(),
-        vault_id,
-    );
+    let result =
+        BeneficiaryReassignment::approve_reassignment(&env, council_member.clone(), vault_id);
 
     assert!(result.is_ok());
 
@@ -201,13 +181,7 @@ fn test_emergency_reassignment() {
     let admin = create_test_address(&env);
     let emergency_admin = create_test_address(&env);
     let members = Vec::from_array(&env, &[admin.clone(), emergency_admin.clone()]);
-    BeneficiaryReassignment::initialize(
-        &env,
-        admin,
-        members,
-        2,
-        7 * 24 * 60 * 60,
-    ).unwrap();
+    BeneficiaryReassignment::initialize(&env, admin, members, 2, 7 * 24 * 60 * 60).unwrap();
 
     let result = BeneficiaryReassignment::emergency_reassignment(
         &env,
@@ -250,11 +224,7 @@ fn test_reassignment_errors() {
 
     // Test unauthorized approver
     let non_member = create_test_address(&env);
-    let result = BeneficiaryReassignment::approve_reassignment(
-        &env,
-        non_member,
-        vault_id,
-    );
+    let result = BeneficiaryReassignment::approve_reassignment(&env, non_member, vault_id);
 
     assert_eq!(result.err(), Some(ReassignmentError::UnauthorizedApprover));
 }
@@ -271,13 +241,7 @@ fn test_reassignment_limit() {
     let admin = create_test_address(&env);
     let council_member = create_test_address(&env);
     let members = Vec::from_array(&env, &[admin.clone(), council_member.clone()]);
-    BeneficiaryReassignment::initialize(
-        &env,
-        admin,
-        members,
-        2,
-        7 * 24 * 60 * 60,
-    ).unwrap();
+    BeneficiaryReassignment::initialize(&env, admin, members, 2, 7 * 24 * 60 * 60).unwrap();
 
     // Manually increment reassignment count to test limit
     let count_key = (VAULT_REASSIGNMENTS, vault_id);
@@ -307,13 +271,7 @@ fn test_add_dao_member() {
 
     // Initialize DAO
     let members = Vec::from_array(&env, &[admin.clone()]);
-    BeneficiaryReassignment::initialize(
-        &env,
-        admin,
-        members,
-        2,
-        7 * 24 * 60 * 60,
-    ).unwrap();
+    BeneficiaryReassignment::initialize(&env, admin, members, 2, 7 * 24 * 60 * 60).unwrap();
 
     // Add new member
     let result = BeneficiaryReassignment::add_dao_member(
@@ -333,7 +291,7 @@ fn test_add_dao_member() {
 #[test]
 fn test_social_proof_types() {
     let env = create_test_env();
-    
+
     // Test all social proof types can be used
     let proof_types = vec![
         SocialProofType::DeathCertificate,

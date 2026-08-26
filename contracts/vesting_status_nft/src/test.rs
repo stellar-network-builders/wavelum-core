@@ -38,16 +38,16 @@ fn test_nft_minting_and_levels() {
     let start_time = 1000;
     let end_time = 2000;
     env.ledger().with_mut(|li| li.timestamp = 0);
-    
+
     let vault_id = vesting_client.create_vault_full(
-        &user, 
-        &100i128, 
-        &start_time, 
-        &end_time, 
-        &0i128, 
-        &false, 
-        &false, 
-        &0u64
+        &user,
+        &100i128,
+        &start_time,
+        &end_time,
+        &0i128,
+        &false,
+        &false,
+        &0u64,
     );
 
     // Verify initially No Badge and Level 0
@@ -56,13 +56,16 @@ fn test_nft_minting_and_levels() {
 
     // Advance time to 25% (1250)
     env.ledger().with_mut(|li| li.timestamp = 1250);
-    
+
     // Claim tokens to trigger mint
     vesting_client.claim_tokens(&vault_id, &25i128);
-    
+
     // Verify Level 1
     assert_eq!(nft_client.get_level(&user), 1);
-    assert_eq!(nft_client.metadata(&user), String::from_str(&env, "Vesting Badge - Level 1: Steady Hand"));
+    assert_eq!(
+        nft_client.metadata(&user),
+        String::from_str(&env, "Vesting Badge - Level 1: Steady Hand")
+    );
 
     // Advance time to 50% (1500)
     env.ledger().with_mut(|li| li.timestamp = 1500);
@@ -78,5 +81,8 @@ fn test_nft_minting_and_levels() {
     env.ledger().with_mut(|li| li.timestamp = 2000);
     vesting_client.claim_tokens(&vault_id, &25i128);
     assert_eq!(nft_client.get_level(&user), 4);
-    assert_eq!(nft_client.metadata(&user), String::from_str(&env, "Vesting Badge - Level 4: Master of Loyalty"));
+    assert_eq!(
+        nft_client.metadata(&user),
+        String::from_str(&env, "Vesting Badge - Level 4: Master of Loyalty")
+    );
 }

@@ -3,8 +3,10 @@
 //! This test suite verifies the secure migration pathway for transitioning
 //! from V2 to V3 architecture, ensuring no funds are trapped during major upgrades.
 
-use soroban_sdk::{contract, contractimpl, Env, Address, BytesN, Vec, IntoVal, testutils::Address as _};
 use crate::{VestingVault, VestingVaultClient};
+use soroban_sdk::{
+    contract, contractimpl, testutils::Address as _, Address, BytesN, Env, IntoVal, Vec,
+};
 
 #[test]
 fn test_protocol_sunset_initiation() {

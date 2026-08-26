@@ -1,5 +1,7 @@
-use soroban_sdk::{contract, contractimpl, contracttype, contractevent, Address, Env, String, Vec, U256};
-use crate::{Vault, DataKey};
+use crate::{DataKey, Vault};
+use soroban_sdk::{
+    contract, contractevent, contractimpl, contracttype, Address, Env, String, Vec, U256,
+};
 
 #[contracttype]
 #[derive(Clone, Debug, PartialEq)]
@@ -101,15 +103,16 @@ impl VestingCertificateRegistry {
         current_contract.require_auth();
 
         let completion_timestamp = env.ledger().timestamp();
-        
+
         // Calculate loyalty score based on vesting behavior
         let loyalty_metrics = Self::calculate_loyalty_metrics(&env, vault_id, &original_vault);
         let loyalty_score = Self::calculate_loyalty_score(&loyalty_metrics);
-        
+
         // Generate unique certificate ID
-        let certificate_count = env.storage().instance().get::<_, u64>(&DataKey::CertificateCount).unwrap_or(0);
+        let certificate_count =
+            env.storage().instance().get::<_, u64>(&DataKey::CertificateCount).unwrap_or(0);
         let certificate_id = U256::from_u128(&env, (certificate_count + 1) as u128);
-        
+
         // Create certificate
         let certificate = CompletedVestCertificate {
             vault_id,
@@ -124,34 +127,41 @@ impl VestingCertificateRegistry {
             certificate_id: certificate_id.clone(),
             metadata_uri,
         };
-        
+
         // Store certificate
-        env.storage().instance().set(&DataKey::CertificateRegistry(certificate_id.clone()), &certificate);
-        
+        env.storage()
+            .instance()
+            .set(&DataKey::CertificateRegistry(certificate_id.clone()), &certificate);
+
         // Update beneficiary certificates list
-        let mut beneficiary_certs = env.storage().instance()
+        let mut beneficiary_certs = env
+            .storage()
+            .instance()
             .get::<_, Vec<U256>>(&DataKey::BeneficiaryCertificates(beneficiary.clone()))
             .unwrap_or(Vec::new(&env));
         beneficiary_certs.push_back(certificate_id.clone());
-        env.storage().instance().set(&DataKey::BeneficiaryCertificates(beneficiary.clone()), &beneficiary_certs);
-        
+        env.storage()
+            .instance()
+            .set(&DataKey::BeneficiaryCertificates(beneficiary.clone()), &beneficiary_certs);
+
         // Update indexes for efficient querying
         Self::update_indexes(&env, &certificate);
-        
+
         // Update certificate count
         env.storage().instance().set(&DataKey::CertificateCount, &(certificate_count + 1));
-        
+
         CertificateIssued {
             certificate_id: certificate_id.clone(),
             beneficiary: beneficiary.clone(),
             vault_id,
             completion_timestamp,
             loyalty_score,
-        }.publish(&env);
-        
+        }
+        .publish(&env);
+
         certificate_id
     }
-    
+
     /// Verify proof of work for a certificate
     /// Called by authorized verifiers (oracles, job boards, etc.)
     pub fn verify_proof_of_work(
@@ -163,13 +173,13 @@ impl VestingCertificateRegistry {
     ) -> bool {
         // Check if caller is authorized verifier
         Self::require_verifier(&env);
-        
+
         let mut certificate = Self::get_certificate(env.clone(), certificate_id.clone());
-        
+
         if certificate.proof_of_work_verified {
             panic!("Certificate already verified");
         }
-        
+
         // Create work verification record
         let verification = WorkVerification {
             verified_by: env.current_contract_address(),
@@ -178,31 +188,38 @@ impl VestingCertificateRegistry {
             impact_score,
             verification_data,
         };
-        
+
         // Store verification
-        env.storage().instance().set(&DataKey::WorkVerification(certificate_id.clone()), &verification);
-        
+        env.storage()
+            .instance()
+            .set(&DataKey::WorkVerification(certificate_id.clone()), &verification);
+
         // Update certificate
         certificate.proof_of_work_verified = true;
-        env.storage().instance().set(&DataKey::CertificateRegistry(certificate_id.clone()), &certificate);
-        
+        env.storage()
+            .instance()
+            .set(&DataKey::CertificateRegistry(certificate_id.clone()), &certificate);
+
         // Update work type index
-        let mut work_type_certs = env.storage().instance()
+        let mut work_type_certs = env
+            .storage()
+            .instance()
             .get::<_, Vec<U256>>(&DataKey::WorkTypeIndex(work_type.clone()))
             .unwrap_or(Vec::new(&env));
         work_type_certs.push_back(certificate_id.clone());
         env.storage().instance().set(&DataKey::WorkTypeIndex(work_type.clone()), &work_type_certs);
-        
+
         WorkVerified {
             certificate_id: certificate_id.clone(),
             verified_by: env.current_contract_address(),
             work_type: work_type.clone(),
             impact_score,
-        }.publish(&env);
-        
+        }
+        .publish(&env);
+
         true
     }
-    
+
     /// Query certificates based on various criteria
     pub fn query_certificates(
         env: Env,
@@ -212,42 +229,47 @@ impl VestingCertificateRegistry {
     ) -> CertificateQueryResult {
         let mut certificates = Vec::new(&env);
         let mut all_certificates = Vec::new(&env);
-        
+
         // Start with all certificates, then filter
-        let certificate_count = env.storage().instance().get::<_, u64>(&DataKey::CertificateCount).unwrap_or(0);
-        
+        let certificate_count =
+            env.storage().instance().get::<_, u64>(&DataKey::CertificateCount).unwrap_or(0);
+
         for i in 1..=certificate_count {
             let cert_id = U256::from_u128(&env, i as u128);
-            if let Some(cert) = env.storage().instance().get::<_, CompletedVestCertificate>(&DataKey::CertificateRegistry(cert_id)) {
+            if let Some(cert) = env
+                .storage()
+                .instance()
+                .get::<_, CompletedVestCertificate>(&DataKey::CertificateRegistry(cert_id))
+            {
                 all_certificates.push_back(cert);
             }
         }
-        
+
         // Apply filters
         for cert in all_certificates.iter() {
             let mut matches = true;
-            
+
             // Filter by beneficiary
             if let Some(beneficiary) = &query.beneficiary {
                 if cert.beneficiary != *beneficiary {
                     matches = false;
                 }
             }
-            
+
             // Filter by verification status
             if let Some(verified_only) = query.verified_only {
                 if verified_only && !cert.proof_of_work_verified {
                     matches = false;
                 }
             }
-            
+
             // Filter by loyalty score
             if let Some(min_score) = query.min_loyalty_score {
                 if cert.loyalty_score < min_score {
                     matches = false;
                 }
             }
-            
+
             // Filter by time range
             if let Some(start) = query.time_range_start {
                 if cert.completion_timestamp < start {
@@ -259,10 +281,12 @@ impl VestingCertificateRegistry {
                     matches = false;
                 }
             }
-            
+
             // Filter by work type (requires checking verification)
             if let Some(work_type) = &query.work_type {
-                if let Some(verification) = env.storage().instance().get::<_, WorkVerification>(&DataKey::WorkVerification(cert.certificate_id.clone())) {
+                if let Some(verification) = env.storage().instance().get::<_, WorkVerification>(
+                    &DataKey::WorkVerification(cert.certificate_id.clone()),
+                ) {
                     if verification.work_type != *work_type {
                         matches = false;
                     }
@@ -270,18 +294,18 @@ impl VestingCertificateRegistry {
                     matches = false; // No verification means no work type
                 }
             }
-            
+
             if matches {
                 certificates.push_back(cert.clone());
             }
         }
-        
+
         let total_found = certificates.len();
-        
+
         // Pagination
         let start_idx = (page * page_size) as usize;
         let end_idx = ((page + 1) * page_size) as usize;
-        
+
         let paginated_certs = if start_idx < total_found as usize {
             let mut result = Vec::new(&env);
             for i in start_idx..end_idx.min(total_found as usize) {
@@ -291,7 +315,7 @@ impl VestingCertificateRegistry {
         } else {
             Vec::new(&env)
         };
-        
+
         CertificateQueryResult {
             certificates: paginated_certs,
             total_found: total_found as u64,
@@ -299,62 +323,65 @@ impl VestingCertificateRegistry {
             page_size,
         }
     }
-    
+
     /// Get certificate by ID
     pub fn get_certificate(env: Env, certificate_id: U256) -> CompletedVestCertificate {
-        env.storage().instance()
+        env.storage()
+            .instance()
             .get::<_, CompletedVestCertificate>(&DataKey::CertificateRegistry(certificate_id))
             .expect("Certificate not found")
     }
-    
+
     /// Get all certificates for a beneficiary
     pub fn get_beneficiary_certificates(env: Env, beneficiary: Address) -> Vec<U256> {
-        env.storage().instance()
+        env.storage()
+            .instance()
             .get::<_, Vec<U256>>(&DataKey::BeneficiaryCertificates(beneficiary))
             .unwrap_or(Vec::new(&env))
     }
-    
+
     /// Get work verification for a certificate
     pub fn get_work_verification(env: Env, certificate_id: U256) -> Option<WorkVerification> {
-        env.storage().instance()
+        env.storage()
+            .instance()
             .get::<_, WorkVerification>(&DataKey::WorkVerification(certificate_id))
     }
-    
+
     /// Set authorized verifier (admin only)
     pub fn set_verifier(env: Env, verifier: Address) {
         // This should be called by the vesting contract admin
         let current_contract = env.current_contract_address();
         current_contract.require_auth();
-        
+
         env.storage().instance().set(&DataKey::CertificateVerifier, &verifier);
     }
-    
+
     // --- Helper Functions ---
-    
+
     fn calculate_loyalty_metrics(env: &Env, _vault_id: u64, vault: &Vault) -> LoyaltyMetrics {
         let total_duration = vault.end_time.saturating_sub(vault.start_time);
         let actual_completion_time = env.ledger().timestamp().saturating_sub(vault.start_time);
-        
+
         // For now, use simplified metrics
         // In a full implementation, this would track:
         // - Early claims (claiming before full vesting)
         // - Missed milestones
         // - Performance cliffs passed
         // - Staking duration
-        
+
         LoyaltyMetrics {
             total_vesting_duration: total_duration,
             actual_completion_time,
-            early_claims_count: 0, // Would need to track this
-            missed_milestones: 0,  // Would need to track this
+            early_claims_count: 0,        // Would need to track this
+            missed_milestones: 0,         // Would need to track this
             performance_cliffs_passed: 1, // Assume passed if completed
-            stake_duration: 0, // Would need to track this
+            stake_duration: 0,            // Would need to track this
         }
     }
-    
+
     fn calculate_loyalty_score(metrics: &LoyaltyMetrics) -> u32 {
         let mut score = 1000u32; // Start with perfect score
-        
+
         // Deduct points for early completion (indicates impatience)
         if metrics.actual_completion_time < metrics.total_vesting_duration {
             let total_dur = metrics.total_vesting_duration as i128;
@@ -363,13 +390,13 @@ impl VestingCertificateRegistry {
             let deduction = (early_diff * 200) / total_dur;
             score = score.saturating_sub(deduction as u32);
         }
-        
+
         // Deduct points for early claims
         score = score.saturating_sub(metrics.early_claims_count * 50);
-        
+
         // Deduct points for missed milestones
         score = score.saturating_sub(metrics.missed_milestones * 100);
-        
+
         // Add points for staking loyalty
         if metrics.stake_duration > 0 {
             let stake_dur = metrics.stake_duration as i128;
@@ -377,31 +404,37 @@ impl VestingCertificateRegistry {
             let staking_bonus = (stake_dur * 100) / total_dur;
             score = score.saturating_add(staking_bonus as u32);
         }
-        
+
         score.min(1000) // Cap at 1000
     }
-    
+
     fn update_indexes(env: &Env, certificate: &CompletedVestCertificate) {
         // Update loyalty score index
         let loyalty_bucket = (certificate.loyalty_score / 100) * 100; // Group by 100s
-        let mut loyalty_certs = env.storage().instance()
+        let mut loyalty_certs = env
+            .storage()
+            .instance()
             .get::<_, Vec<U256>>(&DataKey::LoyaltyIndex(loyalty_bucket))
             .unwrap_or(Vec::new(env));
         loyalty_certs.push_back(certificate.certificate_id.clone());
         env.storage().instance().set(&DataKey::LoyaltyIndex(loyalty_bucket), &loyalty_certs);
-        
+
         // Update completion time index (by year)
         let year = certificate.completion_timestamp / (365 * 24 * 60 * 60); // Unix timestamp to year
-        let mut time_certs = env.storage().instance()
+        let mut time_certs = env
+            .storage()
+            .instance()
             .get::<_, Vec<U256>>(&DataKey::CompletionTimeIndex(year))
             .unwrap_or(Vec::new(env));
         time_certs.push_back(certificate.certificate_id.clone());
 
         env.storage().instance().set(&DataKey::CompletionTimeIndex(year), &time_certs);
     }
-    
+
     fn require_verifier(env: &Env) {
-        if let Some(verifier) = env.storage().instance().get::<_, Address>(&DataKey::CertificateVerifier) {
+        if let Some(verifier) =
+            env.storage().instance().get::<_, Address>(&DataKey::CertificateVerifier)
+        {
             verifier.require_auth();
         } else {
             // If no specific verifier set, require contract admin

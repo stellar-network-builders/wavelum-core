@@ -3,10 +3,7 @@ use soroban_sdk::{
 };
 
 // Contract metadata for the factory
-contractmeta!(
-    key = "Description",
-    val = "Factory contract for deploying vesting vault contracts"
-);
+contractmeta!(key = "Description", val = "Factory contract for deploying vesting vault contracts");
 
 #[contract]
 pub struct VestingFactory;
@@ -26,9 +23,7 @@ impl VestingFactory {
 
         // Initialize the deployed contracts list
         let deployed_contracts: Vec<Address> = Vec::new(&env);
-        env.storage()
-            .instance()
-            .set(&DataKey::DeployedContracts, &deployed_contracts);
+        env.storage().instance().set(&DataKey::DeployedContracts, &deployed_contracts);
     }
 
     /// Deploy a new vesting contract for an organization
@@ -61,10 +56,7 @@ impl VestingFactory {
 
     /// Get all deployed contract addresses
     pub fn get_deployed_contracts(env: Env) -> Vec<Address> {
-        env.storage()
-            .instance()
-            .get(&DataKey::DeployedContracts)
-            .unwrap_or_else(|| Vec::new(&env))
+        env.storage().instance().get(&DataKey::DeployedContracts).unwrap_or_else(|| Vec::new(&env))
     }
 
     /// Get the WASM hash stored in the factory
@@ -76,9 +68,7 @@ impl VestingFactory {
     pub fn update_wasm_hash(env: Env, new_wasm_hash: BytesN<32>) {
         // In a real implementation, you'd want admin access control here
         // For now, we'll just update it directly
-        env.storage()
-            .instance()
-            .set(&DataKey::WasmHash, &new_wasm_hash);
+        env.storage().instance().set(&DataKey::WasmHash, &new_wasm_hash);
     }
 }
 

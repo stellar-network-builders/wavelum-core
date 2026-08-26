@@ -1,21 +1,13 @@
 #![cfg(test)]
-use soroban_sdk::{
-    Address,
-    Bytes,
-    BytesN,
-    Env,
-    Vec,
-    U256,
-};
 use crate::{
+    testutils::{create_test_address, create_test_contract, create_test_env},
     zk_verifier::{
-        ZKVerifier, ZKProof, VerificationKey, AccreditationRecord, 
-        AccreditedInvestorInputs, ZKVerifierError,
-        ACCREDITED_INVESTOR_CIRCUIT, US_JURISDICTION, EU_JURISDICTION,
-        NULLIFIER_MAP, VERIFICATION_KEYS, ACCREDITATION_RECORDS, SUPPORTED_CIRCUITS,
+        AccreditationRecord, AccreditedInvestorInputs, VerificationKey, ZKProof, ZKVerifier,
+        ZKVerifierError, ACCREDITATION_RECORDS, ACCREDITED_INVESTOR_CIRCUIT, EU_JURISDICTION,
+        NULLIFIER_MAP, SUPPORTED_CIRCUITS, US_JURISDICTION, VERIFICATION_KEYS,
     },
-    testutils::{create_test_contract, create_test_address, create_test_env},
 };
+use soroban_sdk::{Address, Bytes, BytesN, Env, Vec, U256};
 
 #[test]
 fn test_zk_proof_verification_success() {
@@ -38,11 +30,12 @@ fn test_zk_proof_verification_success() {
 
     // Add supported circuit
     ZKVerifier::add_supported_circuit(
-        &env, 
-        admin.clone(), 
-        BytesN::from_array([0x01; 32]), 
-        ACCREDITED_INVESTOR_CIRCUIT
-    ).unwrap();
+        &env,
+        admin.clone(),
+        BytesN::from_array([0x01; 32]),
+        ACCREDITED_INVESTOR_CIRCUIT,
+    )
+    .unwrap();
 
     // Create valid ZK proof
     let proof = create_valid_zk_proof(&env, US_JURISDICTION);
@@ -53,7 +46,7 @@ fn test_zk_proof_verification_success() {
 
     // Check that accreditation is recorded
     assert!(ZKVerifier::has_valid_accreditation(&env, investor.clone()));
-    
+
     let record = ZKVerifier::get_accreditation_record(&env, investor).unwrap();
     assert_eq!(record.investor_address, investor);
     assert_eq!(record.jurisdiction_hash, US_JURISDICTION);
@@ -77,11 +70,12 @@ fn test_zk_proof_verification_invalid_nullifier() {
 
     ZKVerifier::add_verification_key(&env, admin.clone(), verification_key).unwrap();
     ZKVerifier::add_supported_circuit(
-        &env, 
-        admin.clone(), 
-        BytesN::from_array([0x01; 32]), 
-        ACCREDITED_INVESTOR_CIRCUIT
-    ).unwrap();
+        &env,
+        admin.clone(),
+        BytesN::from_array([0x01; 32]),
+        ACCREDITED_INVESTOR_CIRCUIT,
+    )
+    .unwrap();
 
     // Create and use first proof
     let proof1 = create_valid_zk_proof(&env, US_JURISDICTION);
@@ -137,11 +131,12 @@ fn test_zk_proof_verification_unsupported_jurisdiction() {
 
     ZKVerifier::add_verification_key(&env, admin.clone(), verification_key).unwrap();
     ZKVerifier::add_supported_circuit(
-        &env, 
-        admin.clone(), 
-        BytesN::from_array([0x01; 32]), 
-        ACCREDITED_INVESTOR_CIRCUIT
-    ).unwrap();
+        &env,
+        admin.clone(),
+        BytesN::from_array([0x01; 32]),
+        ACCREDITED_INVESTOR_CIRCUIT,
+    )
+    .unwrap();
 
     // Create proof with EU jurisdiction (not supported)
     let proof = create_valid_zk_proof(&env, EU_JURISDICTION);
@@ -168,18 +163,19 @@ fn test_zk_proof_verification_expired() {
 
     ZKVerifier::add_verification_key(&env, admin.clone(), verification_key).unwrap();
     ZKVerifier::add_supported_circuit(
-        &env, 
-        admin.clone(), 
-        BytesN::from_array([0x01; 32]), 
-        ACCREDITED_INVESTOR_CIRCUIT
-    ).unwrap();
+        &env,
+        admin.clone(),
+        BytesN::from_array([0x01; 32]),
+        ACCREDITED_INVESTOR_CIRCUIT,
+    )
+    .unwrap();
 
     // Create expired proof
     let mut proof = create_valid_zk_proof(&env, US_JURISDICTION);
-    
+
     // Modify public inputs to set expiry in the past
     let mut public_inputs = Vec::new(&env);
-    
+
     // jurisdiction_hash
     public_inputs.push_back(Bytes::from_array(&env, &US_JURISDICTION.to_array()));
     // net_worth_threshold_met (true)
@@ -194,7 +190,7 @@ fn test_zk_proof_verification_expired() {
     // expiry (past time)
     let past_expiry = (env.ledger().timestamp() - 1000).to_be_bytes();
     public_inputs.push_back(Bytes::from_array(&env, &past_expiry));
-    
+
     proof.public_inputs = public_inputs;
 
     let result = ZKVerifier::verify_accredited_investor(&env, proof, investor);
@@ -219,15 +215,16 @@ fn test_accreditation_record_expiry() {
 
     ZKVerifier::add_verification_key(&env, admin.clone(), verification_key).unwrap();
     ZKVerifier::add_supported_circuit(
-        &env, 
-        admin.clone(), 
-        BytesN::from_array([0x01; 32]), 
-        ACCREDITED_INVESTOR_CIRCUIT
-    ).unwrap();
+        &env,
+        admin.clone(),
+        BytesN::from_array([0x01; 32]),
+        ACCREDITED_INVESTOR_CIRCUIT,
+    )
+    .unwrap();
 
     // Create proof with short expiry
     let mut proof = create_valid_zk_proof(&env, US_JURISDICTION);
-    
+
     // Set expiry to 1 second from now
     let mut public_inputs = Vec::new(&env);
     public_inputs.push_back(Bytes::from_array(&env, &US_JURISDICTION.to_array()));
@@ -238,18 +235,18 @@ fn test_accreditation_record_expiry() {
     public_inputs.push_back(Bytes::from_array(&env, &timestamp));
     let soon_expiry = (env.ledger().timestamp() + 1).to_be_bytes();
     public_inputs.push_back(Bytes::from_array(&env, &soon_expiry));
-    
+
     proof.public_inputs = public_inputs;
 
     // Verify the proof
     ZKVerifier::verify_accredited_investor(&env, proof, investor.clone()).unwrap();
-    
+
     // Should be valid initially
     assert!(ZKVerifier::has_valid_accreditation(&env, investor.clone()));
-    
+
     // Advance time past expiry
     env.ledger().set_timestamp(env.ledger().timestamp() + 2);
-    
+
     // Should no longer be valid
     assert!(!ZKVerifier::has_valid_accreditation(&env, investor));
 }
@@ -297,11 +294,12 @@ fn test_inactive_verification_key() {
 
     ZKVerifier::add_verification_key(&env, admin.clone(), verification_key).unwrap();
     ZKVerifier::add_supported_circuit(
-        &env, 
-        admin.clone(), 
-        BytesN::from_array([0x01; 32]), 
-        ACCREDITED_INVESTOR_CIRCUIT
-    ).unwrap();
+        &env,
+        admin.clone(),
+        BytesN::from_array([0x01; 32]),
+        ACCREDITED_INVESTOR_CIRCUIT,
+    )
+    .unwrap();
 
     // Create proof with inactive key
     let proof = create_valid_zk_proof(&env, US_JURISDICTION);
@@ -313,7 +311,7 @@ fn test_inactive_verification_key() {
 // Helper function to create a valid ZK proof for testing
 fn create_valid_zk_proof(env: &Env, jurisdiction: BytesN<32>) -> ZKProof {
     let mut public_inputs = Vec::new(env);
-    
+
     // jurisdiction_hash
     public_inputs.push_back(Bytes::from_array(env, &jurisdiction.to_array()));
     // net_worth_threshold_met (true)
@@ -348,7 +346,7 @@ fn test_accredited_investor_vault_creation() {
 
     // Setup token and contract
     let token_address = create_test_address(&env);
-    
+
     // Setup verification key
     let verification_key = VerificationKey {
         key_hash: BytesN::from_array([0x01; 32]),
@@ -360,11 +358,12 @@ fn test_accredited_investor_vault_creation() {
 
     ZKVerifier::add_verification_key(&env, admin.clone(), verification_key).unwrap();
     ZKVerifier::add_supported_circuit(
-        &env, 
-        admin.clone(), 
-        BytesN::from_array([0x01; 32]), 
-        ACCREDITED_INVESTOR_CIRCUIT
-    ).unwrap();
+        &env,
+        admin.clone(),
+        BytesN::from_array([0x01; 32]),
+        ACCREDITED_INVESTOR_CIRCUIT,
+    )
+    .unwrap();
 
     // First verify the investor is accredited
     let proof = create_valid_zk_proof(&env, US_JURISDICTION);

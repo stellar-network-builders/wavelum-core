@@ -1,10 +1,10 @@
 #[cfg(test)]
 mod tests {
-    use soroban_sdk::Env;
-    use soroban_sdk::Address;
-    use crate::VestingVault;
-    use crate::types::{LeaverType, ScheduleTerminated};
     use crate::storage::is_schedule_terminated;
+    use crate::types::{LeaverType, ScheduleTerminated};
+    use crate::VestingVault;
+    use soroban_sdk::Address;
+    use soroban_sdk::Env;
 
     #[test]
     fn test_good_leaver_termination() {
@@ -19,9 +19,7 @@ mod tests {
         let vesting_id = 1u32;
 
         // Mock admin authentication (in real test, this would be handled differently)
-        env.mock_auths(&[
-            (&admin, &contract_id, &"terminate_schedule".into()),
-        ]);
+        env.mock_auths(&[(&admin, &contract_id, &"terminate_schedule".into())]);
 
         // Test Good Leaver termination
         client.terminate_schedule(
@@ -38,10 +36,10 @@ mod tests {
         // Verify termination event was emitted
         let events = env.events().all();
         assert_eq!(events.len(), 1);
-        
+
         let event = events.get(0).unwrap();
         assert_eq!(event.topics.get(0), Some(&"ScheduleTerminated".into()));
-        
+
         // Parse the event data (this would need proper event parsing in real implementation)
         // For now, just verify the event exists
     }
@@ -59,9 +57,7 @@ mod tests {
         let vesting_id = 2u32;
 
         // Mock admin authentication
-        env.mock_auths(&[
-            (&admin, &contract_id, &"terminate_schedule".into()),
-        ]);
+        env.mock_auths(&[(&admin, &contract_id, &"terminate_schedule".into())]);
 
         // Test Bad Leaver termination
         client.terminate_schedule(
@@ -78,7 +74,7 @@ mod tests {
         // Verify termination event was emitted
         let events = env.events().all();
         assert_eq!(events.len(), 1);
-        
+
         let event = events.get(0).unwrap();
         assert_eq!(event.topics.get(0), Some(&"ScheduleTerminated".into()));
     }
@@ -96,9 +92,7 @@ mod tests {
         let vesting_id = 3u32;
 
         // Mock admin authentication
-        env.mock_auths(&[
-            (&admin, &contract_id, &"terminate_schedule".into()),
-        ]);
+        env.mock_auths(&[(&admin, &contract_id, &"terminate_schedule".into())]);
 
         // First termination should succeed
         client.terminate_schedule(
@@ -168,9 +162,7 @@ mod tests {
         // In a real test, you'd set up the emergency pause state
 
         // Mock admin authentication
-        env.mock_auths(&[
-            (&admin, &contract_id, &"terminate_schedule".into()),
-        ]);
+        env.mock_auths(&[(&admin, &contract_id, &"terminate_schedule".into())]);
 
         // This test would verify that termination fails during emergency pause
         // Implementation depends on how emergency pause is actually set up
@@ -193,9 +185,7 @@ mod tests {
         assert!(!client.is_schedule_terminated_public(&vesting_id));
 
         // Mock admin authentication
-        env.mock_auths(&[
-            (&admin, &contract_id, &"terminate_schedule".into()),
-        ]);
+        env.mock_auths(&[(&admin, &contract_id, &"terminate_schedule".into())]);
 
         // Terminate the schedule
         client.terminate_schedule(
@@ -225,9 +215,7 @@ mod tests {
         let bad_vesting_id = 8u32;
 
         // Mock admin authentication
-        env.mock_auths(&[
-            (&admin, &contract_id, &"terminate_schedule".into()),
-        ]);
+        env.mock_auths(&[(&admin, &contract_id, &"terminate_schedule".into())]);
 
         // Test Good Leaver
         client.terminate_schedule(

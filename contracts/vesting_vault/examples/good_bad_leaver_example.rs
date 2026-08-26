@@ -1,10 +1,10 @@
 //! Example demonstrating Good Leaver / Bad Leaver termination functionality
-//! 
+//!
 //! This example shows how DAO administrators can use the terminate_schedule function
 //! to handle employee departures with different termination states.
 
-use soroban_sdk::{Env, Address, contracttype};
-use vesting_vault::{VestingVaultClient, LeaverType};
+use soroban_sdk::{contracttype, Address, Env};
+use vesting_vault::{LeaverType, VestingVaultClient};
 
 pub fn main() {
     let env = Env::default();
@@ -14,7 +14,7 @@ pub fn main() {
     // Setup addresses
     let dao_admin = Address::random(&env);
     let employee_alice = Address::random(&env); // Good leaver
-    let employee_bob = Address::random(&env);   // Bad leaver  
+    let employee_bob = Address::random(&env); // Bad leaver
     let dao_treasury = Address::random(&env);
 
     println!("=== Good Leaver / Bad Leaver Termination Example ===\n");
@@ -23,12 +23,12 @@ pub fn main() {
     println!("Scenario 1: Alice (Good Leaver)");
     println!("Alice has been a great employee and is leaving amicably.");
     println!("She should keep her vested tokens but future vesting stops.");
-    
+
     // In a real scenario, Alice might have:
     // - 60% of tokens vested (6,000 out of 10,000)
     // - 4,000 tokens still unvested
     // - 2,000 vested tokens already claimed
-    
+
     client.terminate_schedule(
         &dao_admin,
         &employee_alice,
@@ -46,13 +46,13 @@ pub fn main() {
     println!("Scenario 2: Bob (Bad Leaver)");
     println!("Bob violated company policy and is being terminated for cause.");
     println!("He should lose both unvested and unclaimed vested tokens.");
-    
+
     // In a real scenario, Bob might have:
     // - 60% of tokens vested (6,000 out of 10,000)
     // - 4,000 tokens still unvested
     // - 2,000 vested tokens already claimed
     // - 4,000 vested tokens unclaimed
-    
+
     client.terminate_schedule(
         &dao_admin,
         &employee_bob,
@@ -69,17 +69,15 @@ pub fn main() {
 
     // Verify termination status
     println!("Verification:");
-    println!("Alice's schedule terminated: {}", 
-             client.is_schedule_terminated_public(&1u32));
-    println!("Bob's schedule terminated: {}", 
-             client.is_schedule_terminated_public(&2u32));
+    println!("Alice's schedule terminated: {}", client.is_schedule_terminated_public(&1u32));
+    println!("Bob's schedule terminated: {}", client.is_schedule_terminated_public(&2u32));
 
     println!("\n=== Key Differences ===");
     println!("Good Leaver:");
     println!("- Keeps all vested tokens (claimed and unclaimed)");
     println!("- Loses only unvested tokens");
     println!("- Can still claim vested tokens in the future");
-    
+
     println!("\nBad Leaver:");
     println!("- Keeps only already claimed vested tokens");
     println!("- Loses both unvested and unclaimed vested tokens");

@@ -16,9 +16,12 @@
 //!   2. TWAP across N samples is bounded: no single spike skews it > 5x.
 //!   3. Stale oracle (no update for ORACLE_STALE_LEDGERS) is detected.
 
-use soroban_sdk::{testutils::{Address as _, Ledger}, Address, Env};
-use vesting_vault::{VestingVault, VestingVaultClient};
+use soroban_sdk::{
+    testutils::{Address as _, Ledger},
+    Address, Env,
+};
 use vesting_vault::errors::Error;
+use vesting_vault::{VestingVault, VestingVaultClient};
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -68,8 +71,7 @@ fn twap_spike_ratio_x100(clean_prices: &[i128], spike: i128) -> i128 {
 /// Minimal deterministic LCG — avoids pulling in external crates.
 /// Returns values in [1, max].
 fn lcg_next(state: &mut u64) -> u64 {
-    *state = state.wrapping_mul(6_364_136_223_846_793_005)
-        .wrapping_add(1_442_695_040_888_963_407);
+    *state = state.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1_442_695_040_888_963_407);
     *state
 }
 
@@ -120,7 +122,8 @@ fn fuzz_extreme_spike_trips_circuit_breaker() {
     let result = client.try_update_oracle_price(&admin, &SPIKE_10000_PCT);
     assert!(
         matches!(result, Err(Ok(Error::OraclePriceDeviationTooHigh))),
-        "10,000% spike should trip circuit breaker, got: {:?}", result
+        "10,000% spike should trip circuit breaker, got: {:?}",
+        result
     );
 
     // Circuit breaker must now be active — further updates are blocked.
@@ -133,10 +136,10 @@ fn fuzz_extreme_spike_trips_circuit_breaker() {
 fn fuzz_circuit_breaker_threshold_all_directions() {
     // Prices that should trip (deviation > 30%).
     let trips = [
-        (BASE_PRICE, BASE_PRICE * 2),          // +100%
-        (BASE_PRICE * 10, BASE_PRICE),          // -90%
-        (BASE_PRICE, BASE_PRICE * 101),         // +10,000%
-        (1_000 * PRICE_SCALE, 1),               // near-zero crash
+        (BASE_PRICE, BASE_PRICE * 2),                   // +100%
+        (BASE_PRICE * 10, BASE_PRICE),                  // -90%
+        (BASE_PRICE, BASE_PRICE * 101),                 // +10,000%
+        (1_000 * PRICE_SCALE, 1),                       // near-zero crash
         (i128::MAX / 100_001, i128::MAX / 100_001 * 2), // large numbers
     ];
 
@@ -150,13 +153,13 @@ fn fuzz_circuit_breaker_threshold_all_directions() {
         if dev > THRESHOLD_BPS {
             assert!(
                 matches!(result, Err(Ok(Error::OraclePriceDeviationTooHigh))),
-                "deviation {} bps from {} to {} must trip breaker", dev, baseline, spike
+                "deviation {} bps from {} to {} must trip breaker",
+                dev,
+                baseline,
+                spike
             );
         } else {
-            assert!(
-                result.is_ok(),
-                "deviation {} bps should NOT trip breaker", dev
-            );
+            assert!(result.is_ok(), "deviation {} bps should NOT trip breaker", dev);
         }
     }
 }
@@ -177,7 +180,8 @@ fn fuzz_frozen_oracle_blocks_all_updates() {
         let r = client.try_update_oracle_price(&admin, &price);
         assert!(
             matches!(r, Err(Ok(Error::OracleCircuitBreakerActive))),
-            "frozen oracle must block update to price {}", price
+            "frozen oracle must block update to price {}",
+            price
         );
     }
 }
@@ -279,10 +283,7 @@ fn fuzz_rapid_same_ledger_updates_trip_breaker() {
     // Now same ledger, spike to 10,000% above original baseline.
     let result = client.try_update_oracle_price(&admin, &SPIKE_10000_PCT);
     let dev = calc_deviation_bps(price_29_pct, SPIKE_10000_PCT);
-    assert!(
-        dev > THRESHOLD_BPS,
-        "sanity: deviation {} bps must exceed threshold", dev
-    );
+    assert!(dev > THRESHOLD_BPS, "sanity: deviation {} bps must exceed threshold", dev);
     assert!(
         matches!(result, Err(Ok(Error::OraclePriceDeviationTooHigh))),
         "rapid spike must trip circuit breaker"
@@ -338,7 +339,10 @@ fn fuzz_twap_bounded_under_single_block_spike() {
             assert!(
                 ratio <= max_expected_ratio,
                 "TWAP ratio {}× exceeds bound {}× for n={} mult={}",
-                ratio, max_expected_ratio, n, mult
+                ratio,
+                max_expected_ratio,
+                n,
+                mult
             );
         }
     }
@@ -353,9 +357,8 @@ fn fuzz_twap_no_overflow_under_extreme_prices() {
 
     for _ in 0..10_000 {
         let n = (lcg_next(&mut state) % 45 + 5) as usize; // 5..50 samples
-        let mut prices: Vec<i128> = (0..n)
-            .map(|_| lcg_range(&mut state, 1, PRICE_SCALE * 1_000))
-            .collect();
+        let mut prices: Vec<i128> =
+            (0..n).map(|_| lcg_range(&mut state, 1, PRICE_SCALE * 1_000)).collect();
 
         // Insert one pathological spike at a random position.
         let pos = (lcg_next(&mut state) as usize) % (n + 1);
@@ -372,10 +375,7 @@ fn fuzz_twap_no_overflow_under_extreme_prices() {
     }
 
     // We allow a small number of expected overflows (very large price pools).
-    assert!(
-        overflow_failures < 10,
-        "{} unexpected TWAP overflow cases", overflow_failures
-    );
+    assert!(overflow_failures < 10, "{} unexpected TWAP overflow cases", overflow_failures);
 }
 
 // ── Staleness edge case ───────────────────────────────────────────────────────
@@ -426,7 +426,8 @@ fn fuzz_oracle_broadcast_halt_state_persists() {
         let record = client.get_oracle_price().unwrap();
         assert!(
             record.is_frozen,
-            "frozen state must persist after {} extra ledgers without broadcast", delta
+            "frozen state must persist after {} extra ledgers without broadcast",
+            delta
         );
     }
 }

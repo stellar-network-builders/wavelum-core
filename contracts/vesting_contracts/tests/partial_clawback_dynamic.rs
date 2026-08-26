@@ -1,6 +1,9 @@
 use soroban_sdk::{testutils::Address as _, vec, Address, Env};
 
-use vesting_contracts::{BatchCreateData, ScheduleConfig, VestingContract, VestingContractClient, AdminAction, AssetAllocationEntry};
+use vesting_contracts::{
+    AdminAction, AssetAllocationEntry, BatchCreateData, ScheduleConfig, VestingContract,
+    VestingContractClient,
+};
 
 fn setup(env: &Env) -> (VestingContractClient<'static>, Address, Address) {
     env.mock_all_auths();
@@ -30,23 +33,26 @@ fn test_partial_clawback_dynamic_basic() {
     // Create a vault with 1000 tokens over 1000 seconds (1 token/second)
     let cfg = ScheduleConfig {
         owner: beneficiary.clone(),
-        asset_basket: soroban_sdk::vec![&env, AssetAllocationEntry {
-            asset_id: token,
-            total_amount: 1000i128,
-            released_amount: 0,
-            locked_amount: 0,
-            percentage: 10000,
-        }],
+        asset_basket: soroban_sdk::vec![
+            &env,
+            AssetAllocationEntry {
+                asset_id: token,
+                total_amount: 1000i128,
+                released_amount: 0,
+                locked_amount: 0,
+                percentage: 10000,
+            }
+        ],
         start_time: start,
         end_time: end,
         keeper_fee: 0i128,
         is_revocable: true,
         is_transferable: false,
     };
-    
+
     let action = AdminAction::AddBeneficiary(beneficiary.clone(), cfg);
     client.propose_admin_action(&admin, &action);
-    
+
     // Get the vault ID (assuming it's 0 for first vault)
     let vault_id = 0u64;
 
@@ -95,23 +101,26 @@ fn test_partial_clawback_dynamic_early() {
 
     let cfg = ScheduleConfig {
         owner: beneficiary.clone(),
-        asset_basket: soroban_sdk::vec![&env, AssetAllocationEntry {
-            asset_id: token,
-            total_amount: 1000i128,
-            released_amount: 0,
-            locked_amount: 0,
-            percentage: 10000,
-        }],
+        asset_basket: soroban_sdk::vec![
+            &env,
+            AssetAllocationEntry {
+                asset_id: token,
+                total_amount: 1000i128,
+                released_amount: 0,
+                locked_amount: 0,
+                percentage: 10000,
+            }
+        ],
         start_time: start,
         end_time: end,
         keeper_fee: 0i128,
         is_revocable: true,
         is_transferable: false,
     };
-    
+
     let action = AdminAction::AddBeneficiary(beneficiary.clone(), cfg);
     client.propose_admin_action(&admin, &action);
-    
+
     let vault_id = 0u64;
 
     // Advance only 100 seconds (10% vested)
@@ -140,23 +149,26 @@ fn test_partial_clawback_dynamic_late() {
 
     let cfg = ScheduleConfig {
         owner: beneficiary.clone(),
-        asset_basket: soroban_sdk::vec![&env, AssetAllocationEntry {
-            asset_id: token,
-            total_amount: 1000i128,
-            released_amount: 0,
-            locked_amount: 0,
-            percentage: 10000,
-        }],
+        asset_basket: soroban_sdk::vec![
+            &env,
+            AssetAllocationEntry {
+                asset_id: token,
+                total_amount: 1000i128,
+                released_amount: 0,
+                locked_amount: 0,
+                percentage: 10000,
+            }
+        ],
         start_time: start,
         end_time: end,
         keeper_fee: 0i128,
         is_revocable: true,
         is_transferable: false,
     };
-    
+
     let action = AdminAction::AddBeneficiary(beneficiary.clone(), cfg);
     client.propose_admin_action(&admin, &action);
-    
+
     let vault_id = 0u64;
 
     // Advance 800 seconds (80% vested)
@@ -186,23 +198,26 @@ fn test_partial_clawback_exceeds_unvested() {
 
     let cfg = ScheduleConfig {
         owner: beneficiary.clone(),
-        asset_basket: soroban_sdk::vec![&env, AssetAllocationEntry {
-            asset_id: token,
-            total_amount: 1000i128,
-            released_amount: 0,
-            locked_amount: 0,
-            percentage: 10000,
-        }],
+        asset_basket: soroban_sdk::vec![
+            &env,
+            AssetAllocationEntry {
+                asset_id: token,
+                total_amount: 1000i128,
+                released_amount: 0,
+                locked_amount: 0,
+                percentage: 10000,
+            }
+        ],
         start_time: start,
         end_time: end,
         keeper_fee: 0i128,
         is_revocable: true,
         is_transferable: false,
     };
-    
+
     let action = AdminAction::AddBeneficiary(beneficiary.clone(), cfg);
     client.propose_admin_action(&admin, &action);
-    
+
     let vault_id = 0u64;
 
     // Advance 800 seconds (80% vested, only 200 unvested)
@@ -225,23 +240,26 @@ fn test_partial_clawback_irrevocable() {
 
     let cfg = ScheduleConfig {
         owner: beneficiary.clone(),
-        asset_basket: soroban_sdk::vec![&env, AssetAllocationEntry {
-            asset_id: token,
-            total_amount: 1000i128,
-            released_amount: 0,
-            locked_amount: 0,
-            percentage: 10000,
-        }],
+        asset_basket: soroban_sdk::vec![
+            &env,
+            AssetAllocationEntry {
+                asset_id: token,
+                total_amount: 1000i128,
+                released_amount: 0,
+                locked_amount: 0,
+                percentage: 10000,
+            }
+        ],
         start_time: start,
         end_time: end,
         keeper_fee: 0i128,
         is_revocable: false, // Irrevocable vault
         is_transferable: false,
     };
-    
+
     let action = AdminAction::AddBeneficiary(beneficiary.clone(), cfg);
     client.propose_admin_action(&admin, &action);
-    
+
     let vault_id = 0u64;
 
     // Try to clawback from irrevocable vault
@@ -261,23 +279,26 @@ fn test_partial_clawback_mathematical_precision() {
     // Use amounts that test precision
     let cfg = ScheduleConfig {
         owner: beneficiary.clone(),
-        asset_basket: soroban_sdk::vec![&env, AssetAllocationEntry {
-            asset_id: token,
-            total_amount: 1000000i128, // 1M tokens
-            released_amount: 0,
-            locked_amount: 0,
-            percentage: 10000,
-        }],
+        asset_basket: soroban_sdk::vec![
+            &env,
+            AssetAllocationEntry {
+                asset_id: token,
+                total_amount: 1000000i128, // 1M tokens
+                released_amount: 0,
+                locked_amount: 0,
+                percentage: 10000,
+            }
+        ],
         start_time: start,
         end_time: end,
         keeper_fee: 0i128,
         is_revocable: true,
         is_transferable: false,
     };
-    
+
     let action = AdminAction::AddBeneficiary(beneficiary.clone(), cfg);
     client.propose_admin_action(&admin, &action);
-    
+
     let vault_id = 0u64;
 
     // Advance to exactly 1/3 point
@@ -292,7 +313,7 @@ fn test_partial_clawback_mathematical_precision() {
 
     // Should have: 333000 (vested before) + (566667 * 333 / 667) = 333000 + 283000 = 616000
     let claimable = client.calculate_claimable(&vault_id);
-    
+
     // Verify mathematical correctness (within rounding tolerance)
     assert!(claimable >= 615000i128 && claimable <= 617000i128);
 }
@@ -308,23 +329,26 @@ fn test_multiple_clawbacks() {
 
     let cfg = ScheduleConfig {
         owner: beneficiary.clone(),
-        asset_basket: soroban_sdk::vec![&env, AssetAllocationEntry {
-            asset_id: token,
-            total_amount: 1000i128,
-            released_amount: 0,
-            locked_amount: 0,
-            percentage: 10000,
-        }],
+        asset_basket: soroban_sdk::vec![
+            &env,
+            AssetAllocationEntry {
+                asset_id: token,
+                total_amount: 1000i128,
+                released_amount: 0,
+                locked_amount: 0,
+                percentage: 10000,
+            }
+        ],
         start_time: start,
         end_time: end,
         keeper_fee: 0i128,
         is_revocable: true,
         is_transferable: false,
     };
-    
+
     let action = AdminAction::AddBeneficiary(beneficiary.clone(), cfg);
     client.propose_admin_action(&admin, &action);
-    
+
     let vault_id = 0u64;
 
     // First clawback at 25% point

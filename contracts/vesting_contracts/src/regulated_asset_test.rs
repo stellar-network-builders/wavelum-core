@@ -1,19 +1,13 @@
 #![cfg(test)]
-use soroban_sdk::{
-    Address,
-    Env,
-    Vec,
-    String,
-    BytesN,
-};
 use crate::{
     regulated_asset::{
-        RegulatedAssetManager, RegulatedAssetError, AssetRegulation, SEP08Authorization,
-        AuthorizationStatus, FreezeEvent, ClawbackEvent, RegulatedAssetTrait,
-        ASSET_REGULATIONS, SEP08_AUTHORIZATIONS, FREEZE_EVENTS, CLAWBACK_EVENTS,
+        AssetRegulation, AuthorizationStatus, ClawbackEvent, FreezeEvent, RegulatedAssetError,
+        RegulatedAssetManager, RegulatedAssetTrait, SEP08Authorization, ASSET_REGULATIONS,
+        CLAWBACK_EVENTS, FREEZE_EVENTS, SEP08_AUTHORIZATIONS,
     },
-    testutils::{create_test_contract, create_test_address, create_test_env},
+    testutils::{create_test_address, create_test_contract, create_test_env},
 };
+use soroban_sdk::{Address, BytesN, Env, String, Vec};
 
 #[test]
 fn test_register_regulated_asset() {
@@ -22,18 +16,18 @@ fn test_register_regulated_asset() {
     let asset_id = create_test_address(&env);
     let issuer = create_test_address(&env);
 
-    let compliance_requirements = Vec::from_array(&env, &[
-        "KYC required".to_string(),
-        "Accredited investor verification".to_string(),
-    ]);
+    let compliance_requirements = Vec::from_array(
+        &env,
+        &["KYC required".to_string(), "Accredited investor verification".to_string()],
+    );
 
     let result = RegulatedAssetManager::register_regulated_asset(
         &env,
         asset_id.clone(),
         issuer.clone(),
-        true, // requires_authorization
-        true, // supports_freeze
-        true, // supports_clawback
+        true,               // requires_authorization
+        true,               // supports_freeze
+        true,               // supports_clawback
         365 * 24 * 60 * 60, // 1 year max duration
         compliance_requirements.clone(),
     );
@@ -66,7 +60,8 @@ fn test_register_duplicate_asset() {
         true,
         365 * 24 * 60 * 60,
         Vec::new(&env),
-    ).unwrap();
+    )
+    .unwrap();
 
     // Try to register same asset again
     let result = RegulatedAssetManager::register_regulated_asset(
@@ -102,7 +97,8 @@ fn test_create_authorization() {
         true, // supports_clawback
         365 * 24 * 60 * 60,
         Vec::new(&env),
-    ).unwrap();
+    )
+    .unwrap();
 
     // Create authorization
     let result = RegulatedAssetManager::create_authorization(
@@ -146,7 +142,8 @@ fn test_validate_authorization_success() {
         true,
         365 * 24 * 60 * 60,
         Vec::new(&env),
-    ).unwrap();
+    )
+    .unwrap();
 
     RegulatedAssetManager::create_authorization(
         &env,
@@ -157,7 +154,8 @@ fn test_validate_authorization_success() {
         env.ledger().timestamp() + 365 * 24 * 60 * 60,
         issuer.clone(),
         0,
-    ).unwrap();
+    )
+    .unwrap();
 
     // Validate authorization for smaller amount
     let result = RegulatedAssetManager::validate_authorization(
@@ -190,7 +188,8 @@ fn test_validate_authorization_insufficient() {
         true,
         365 * 24 * 60 * 60,
         Vec::new(&env),
-    ).unwrap();
+    )
+    .unwrap();
 
     RegulatedAssetManager::create_authorization(
         &env,
@@ -201,7 +200,8 @@ fn test_validate_authorization_insufficient() {
         env.ledger().timestamp() + 365 * 24 * 60 * 60,
         issuer.clone(),
         0,
-    ).unwrap();
+    )
+    .unwrap();
 
     // Try to validate for more than authorized amount
     let result = RegulatedAssetManager::validate_authorization(
@@ -234,7 +234,8 @@ fn test_validate_authorization_expired() {
         true,
         365 * 24 * 60 * 60,
         Vec::new(&env),
-    ).unwrap();
+    )
+    .unwrap();
 
     RegulatedAssetManager::create_authorization(
         &env,
@@ -245,7 +246,8 @@ fn test_validate_authorization_expired() {
         env.ledger().timestamp() + 1, // expires in 1 second
         issuer.clone(),
         0,
-    ).unwrap();
+    )
+    .unwrap();
 
     // Wait for expiry
     // Note: In real test, you'd need to advance ledger timestamp
@@ -282,7 +284,8 @@ fn test_handle_freeze_event() {
         true,
         365 * 24 * 60 * 60,
         Vec::new(&env),
-    ).unwrap();
+    )
+    .unwrap();
 
     let result = RegulatedAssetManager::handle_freeze_event(
         &env,
@@ -319,7 +322,8 @@ fn test_handle_clawback_event() {
         true, // supports_clawback
         365 * 24 * 60 * 60,
         Vec::new(&env),
-    ).unwrap();
+    )
+    .unwrap();
 
     let result = RegulatedAssetManager::handle_clawback_event(
         &env,
@@ -356,7 +360,8 @@ fn test_consume_authorization() {
         true,
         365 * 24 * 60 * 60,
         Vec::new(&env),
-    ).unwrap();
+    )
+    .unwrap();
 
     RegulatedAssetManager::create_authorization(
         &env,
@@ -367,7 +372,8 @@ fn test_consume_authorization() {
         env.ledger().timestamp() + 365 * 24 * 60 * 60,
         issuer.clone(),
         0,
-    ).unwrap();
+    )
+    .unwrap();
 
     // Consume part of authorization
     RegulatedAssetManager::consume_authorization(&env, authorization_id.clone(), 250000);
@@ -397,7 +403,8 @@ fn test_revoke_authorization() {
         true,
         365 * 24 * 60 * 60,
         Vec::new(&env),
-    ).unwrap();
+    )
+    .unwrap();
 
     RegulatedAssetManager::create_authorization(
         &env,
@@ -408,7 +415,8 @@ fn test_revoke_authorization() {
         env.ledger().timestamp() + 365 * 24 * 60 * 60,
         issuer.clone(),
         0,
-    ).unwrap();
+    )
+    .unwrap();
 
     // Revoke authorization
     let result = RegulatedAssetManager::revoke_authorization(
@@ -465,7 +473,8 @@ fn test_authorization_status_transitions() {
         true,
         365 * 24 * 60 * 60,
         Vec::new(&env),
-    ).unwrap();
+    )
+    .unwrap();
 
     RegulatedAssetManager::create_authorization(
         &env,
@@ -476,7 +485,8 @@ fn test_authorization_status_transitions() {
         env.ledger().timestamp() + 365 * 24 * 60 * 60,
         issuer.clone(),
         0,
-    ).unwrap();
+    )
+    .unwrap();
 
     // Test initial status
     let auth = RegulatedAssetManager::get_authorization(&env, authorization_id.clone()).unwrap();
@@ -488,7 +498,8 @@ fn test_authorization_status_transitions() {
         issuer.clone(),
         authorization_id.clone(),
         "Test revocation".to_string(),
-    ).unwrap();
+    )
+    .unwrap();
 
     // Verify status changed to revoked
     let auth = RegulatedAssetManager::get_authorization(&env, authorization_id.clone()).unwrap();

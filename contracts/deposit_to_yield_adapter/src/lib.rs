@@ -1,28 +1,11 @@
 #![no_std]
 // Safety lint attributes for smart contract
 #![deny(unsafe_code)]
-#![warn(
-    missing_docs,
-    missing_debug_implementations,
-    unused_results,
-    clippy::all,
-    clippy::pedantic
-)]
+#![warn(missing_docs, missing_debug_implementations, unused_results, clippy::all, clippy::pedantic)]
 
 use soroban_sdk::{
-    contract,
-    contractimpl,
-    contracttype,
-    contractevent,
-    token,
-    Address,
-    Env,
-    IntoVal,
-    Symbol,
-    Vec,
-    String,
-    U256,
-    BytesN,
+    contract, contractevent, contractimpl, contracttype, token, Address, BytesN, Env, IntoVal,
+    String, Symbol, Vec, U256,
 };
 
 #[contracttype]
@@ -64,11 +47,11 @@ pub enum AdapterDataKey {
     Admin,
     VestingContract,
     WhitelistedProtocols(Address), // protocol_address -> LendingProtocol
-    VaultPositions(u64), // vault_id -> Vec<YieldPosition>
+    VaultPositions(u64),           // vault_id -> Vec<YieldPosition>
     ProtocolCounter,
     YieldSummary(u64), // vault_id -> VaultYieldSummary
     IsPaused,
-    YieldTreasury, // Address where yield is collected
+    YieldTreasury,     // Address where yield is collected
     InsuranceTreasury, // Address of insurance treasury for 1% fee
 }
 
@@ -150,13 +133,19 @@ pub struct DepositToYieldAdapter;
 #[contractimpl]
 impl DepositToYieldAdapter {
     /// Initialize the adapter with admin and vesting contract addresses
-    pub fn initialize(env: Env, admin: Address, vesting_contract: Address, yield_treasury: Address, insurance_treasury: Address) {
+    pub fn initialize(
+        env: Env,
+        admin: Address,
+        vesting_contract: Address,
+        yield_treasury: Address,
+        insurance_treasury: Address,
+    ) {
         if env.storage().instance().has(&AdapterDataKey::Admin) {
             panic!("Already initialized");
         }
-        
+
         admin.require_auth();
-        
+
         env.storage().instance().set(&AdapterDataKey::Admin, &admin);
         env.storage().instance().set(&AdapterDataKey::VestingContract, &vesting_contract);
         env.storage().instance().set(&AdapterDataKey::YieldTreasury, &yield_treasury);
@@ -169,54 +158,53 @@ impl DepositToYieldAdapter {
     pub fn whitelist_protocol(env: Env, admin: Address, protocol: LendingProtocol) {
         Self::require_admin(&env, &admin);
         Self::require_not_paused(&env);
-        
+
         // Validate risk rating (only allow low-risk protocols: rating 1-2)
         if protocol.risk_rating > 2 {
             panic!("Risk rating too high. Only low-risk protocols (rating 1-2) are allowed");
         }
-        
+
         // Validate protocol has supported assets
         if protocol.supported_assets.is_empty() {
             panic!("Protocol must support at least one asset");
         }
-        
+
         let protocol_address = protocol.address.clone();
-        
+
         // Store protocol
-        env.storage().instance().set(
-            &AdapterDataKey::WhitelistedProtocols(protocol_address.clone()),
-            &protocol,
-        );
-        
+        env.storage()
+            .instance()
+            .set(&AdapterDataKey::WhitelistedProtocols(protocol_address.clone()), &protocol);
+
         // Increment protocol counter
-        let mut counter: u64 = env.storage().instance()
-            .get(&AdapterDataKey::ProtocolCounter)
-            .unwrap_or(0u64);
+        let mut counter: u64 =
+            env.storage().instance().get(&AdapterDataKey::ProtocolCounter).unwrap_or(0u64);
         counter += 1;
         env.storage().instance().set(&AdapterDataKey::ProtocolCounter, &counter);
-        
+
         // Emit event
         ProtocolWhitelisted {
             protocol_address: protocol_address.clone(),
             name: protocol.name.clone(),
             risk_rating: protocol.risk_rating,
-        }.publish(&env);
+        }
+        .publish(&env);
     }
 
     /// Remove a protocol from the whitelist
     pub fn delist_protocol(env: Env, admin: Address, protocol_address: Address) {
         Self::require_admin(&env, &admin);
-        
+
         // Check if protocol exists
         let protocol = Self::get_whitelisted_protocol(&env, &protocol_address);
-        
+
         // Remove protocol
-        env.storage().instance().remove(&AdapterDataKey::WhitelistedProtocols(protocol_address.clone()));
-        
+        env.storage()
+            .instance()
+            .remove(&AdapterDataKey::WhitelistedProtocols(protocol_address.clone()));
+
         // Emit event
-        ProtocolDelisted {
-            protocol_address: protocol_address.clone(),
-        }.publish(&env);
+        ProtocolDelisted { protocol_address: protocol_address.clone() }.publish(&env);
     }
 
     /// Deposit unvested tokens from a vault to a whitelisted lending protocol
@@ -230,38 +218,39 @@ impl DepositToYieldAdapter {
     ) -> i128 {
         Self::require_admin(&env, &admin);
         Self::require_not_paused(&env);
-        
+
         if amount <= 0 {
             panic!("Amount must be positive");
         }
-        
+
         // Check if protocol is whitelisted
         let protocol = Self::get_whitelisted_protocol(&env, &protocol_address);
-        
+
         // Check if asset is supported by protocol
         if !protocol.supported_assets.contains(&asset_address) {
             panic!("Asset not supported by protocol");
         }
-        
+
         // Check deposit limits
         if amount < protocol.minimum_deposit || amount > protocol.maximum_deposit {
             panic!("Amount outside protocol deposit limits");
         }
-        
+
         // Get unvested amount from vesting contract
         let unvested_amount = Self::get_unvested_amount(&env, vault_id, &asset_address);
         if unvested_amount < amount {
             panic!("Insufficient unvested tokens");
         }
-        
+
         // Transfer tokens from vesting contract to this adapter
         let vesting_contract = Self::get_vesting_contract(&env);
         let token_client = token::Client::new(&env, &asset_address);
         token_client.transfer(&vesting_contract, &env.current_contract_address(), &amount);
-        
+
         // Deposit to lending protocol and receive shares
-        let shares_received = Self::deposit_to_protocol(&env, &protocol_address, &asset_address, amount);
-        
+        let shares_received =
+            Self::deposit_to_protocol(&env, &protocol_address, &asset_address, amount);
+
         // Create or update yield position
         let position = YieldPosition {
             protocol_address: protocol_address.clone(),
@@ -272,12 +261,12 @@ impl DepositToYieldAdapter {
             last_yield_claim: 0,
             accumulated_yield: 0,
         };
-        
+
         Self::add_or_update_position(&env, vault_id, position);
-        
+
         // Update vault yield summary
         Self::update_yield_summary(&env, vault_id, amount, 0);
-        
+
         // Emit event
         DepositedToYield {
             vault_id,
@@ -285,8 +274,9 @@ impl DepositToYieldAdapter {
             asset_address: asset_address.clone(),
             amount,
             shares_received,
-        }.publish(&env);
-        
+        }
+        .publish(&env);
+
         shares_received
     }
 
@@ -300,59 +290,64 @@ impl DepositToYieldAdapter {
     ) -> i128 {
         Self::require_admin(&env, &admin);
         Self::require_not_paused(&env);
-        
+
         // Get the position
         let mut positions = Self::get_vault_positions(&env, vault_id);
         let mut position_index: Option<u32> = None;
-        
+
         for (i, pos) in positions.iter().enumerate() {
             if pos.protocol_address == protocol_address && pos.asset_address == asset_address {
                 position_index = Some(i.try_into().unwrap());
                 break;
             }
         }
-        
+
         let position_index = position_index.expect("Position not found");
         let mut position = positions.get(position_index).unwrap();
-        
+
         // Calculate yield
         let current_value = Self::get_position_value(&env, &position);
         let yield_amount = current_value - position.deposited_amount - position.accumulated_yield;
-        
+
         if yield_amount <= 0 {
             return 0; // No yield to claim
         }
-        
+
         // Claim yield from protocol
-        let claimed_yield = Self::claim_yield_from_protocol(&env, &protocol_address, &asset_address, yield_amount);
-        
+        let claimed_yield =
+            Self::claim_yield_from_protocol(&env, &protocol_address, &asset_address, yield_amount);
+
         // Update position
         position.accumulated_yield += claimed_yield;
         position.last_yield_claim = env.ledger().timestamp();
         positions.set(position_index, position);
-        
+
         // Update storage
         env.storage().instance().set(&AdapterDataKey::VaultPositions(vault_id), &positions);
-        
+
         // Update yield summary
         Self::update_yield_summary(&env, vault_id, 0, claimed_yield);
-        
+
         // Calculate insurance fee (1%)
         let insurance_fee = claimed_yield / 100;
         let yield_to_treasury = claimed_yield - insurance_fee;
-        
+
         // Transfer yield to treasury
         let treasury = Self::get_yield_treasury(&env);
         let token_client = token::Client::new(&env, &asset_address);
         if yield_to_treasury > 0 {
             token_client.transfer(&env.current_contract_address(), &treasury, &yield_to_treasury);
         }
-        
+
         // Transfer insurance fee to insurance treasury
         if insurance_fee > 0 {
             let insurance_treasury = Self::get_insurance_treasury(&env);
-            token_client.transfer(&env.current_contract_address(), &insurance_treasury, &insurance_fee);
-            
+            token_client.transfer(
+                &env.current_contract_address(),
+                &insurance_treasury,
+                &insurance_fee,
+            );
+
             // Record the deposit in insurance treasury
             let args = vec![
                 &env,
@@ -362,15 +357,11 @@ impl DepositToYieldAdapter {
             ];
             env.invoke_contract(&insurance_treasury, &Symbol::new(&env, "record_deposit"), args);
         }
-        
+
         // Emit event
-        YieldClaimed {
-            vault_id,
-            protocol_address,
-            asset_address,
-            yield_amount: claimed_yield,
-        }.publish(&env);
-        
+        YieldClaimed { vault_id, protocol_address, asset_address, yield_amount: claimed_yield }
+            .publish(&env);
+
         claimed_yield
     }
 
@@ -384,57 +375,65 @@ impl DepositToYieldAdapter {
     ) -> (i128, i128) {
         Self::require_admin(&env, &admin);
         Self::require_not_paused(&env);
-        
+
         // Get the position
         let mut positions = Self::get_vault_positions(&env, vault_id);
         let mut position_index: Option<u32> = None;
-        
+
         for (i, pos) in positions.iter().enumerate() {
             if pos.protocol_address == protocol_address && pos.asset_address == asset_address {
                 position_index = Some(i.try_into().unwrap());
                 break;
             }
         }
-        
+
         let position_index = position_index.expect("Position not found");
         let position = positions.get(position_index).unwrap();
-        
+
         // Withdraw from protocol
-        let (principal_withdrawn, yield_withdrawn) = Self::withdraw_from_protocol(
-            &env,
-            &protocol_address,
-            &asset_address,
-            position.shares,
-        );
-        
+        let (principal_withdrawn, yield_withdrawn) =
+            Self::withdraw_from_protocol(&env, &protocol_address, &asset_address, position.shares);
+
         // Remove position from storage
         positions.remove(position_index);
         env.storage().instance().set(&AdapterDataKey::VaultPositions(vault_id), &positions);
-        
+
         // Transfer principal back to vesting contract
         let vesting_contract = Self::get_vesting_contract(&env);
         let token_client = token::Client::new(&env, &asset_address);
-        
+
         if principal_withdrawn > 0 {
-            token_client.transfer(&env.current_contract_address(), &vesting_contract, &principal_withdrawn);
+            token_client.transfer(
+                &env.current_contract_address(),
+                &vesting_contract,
+                &principal_withdrawn,
+            );
         }
-        
+
         if yield_withdrawn > 0 {
             // Calculate insurance fee (1%)
             let insurance_fee = yield_withdrawn / 100;
             let yield_to_treasury = yield_withdrawn - insurance_fee;
-            
+
             // Transfer yield to treasury
             let treasury = Self::get_yield_treasury(&env);
             if yield_to_treasury > 0 {
-                token_client.transfer(&env.current_contract_address(), &treasury, &yield_to_treasury);
+                token_client.transfer(
+                    &env.current_contract_address(),
+                    &treasury,
+                    &yield_to_treasury,
+                );
             }
-            
+
             // Transfer insurance fee to insurance treasury
             if insurance_fee > 0 {
                 let insurance_treasury = Self::get_insurance_treasury(&env);
-                token_client.transfer(&env.current_contract_address(), &insurance_treasury, &insurance_fee);
-                
+                token_client.transfer(
+                    &env.current_contract_address(),
+                    &insurance_treasury,
+                    &insurance_fee,
+                );
+
                 // Record the deposit in insurance treasury
                 let args = vec![
                     &env,
@@ -442,13 +441,17 @@ impl DepositToYieldAdapter {
                     asset_address.into_val(),
                     insurance_fee.into_val(),
                 ];
-                env.invoke_contract(&insurance_treasury, &Symbol::new(&env, "record_deposit"), args);
+                env.invoke_contract(
+                    &insurance_treasury,
+                    &Symbol::new(&env, "record_deposit"),
+                    args,
+                );
             }
         }
-        
+
         // Update yield summary (remove deposited amount, add yield)
         Self::update_yield_summary(&env, vault_id, -principal_withdrawn, yield_withdrawn);
-        
+
         // Emit event
         PositionWithdrawn {
             vault_id,
@@ -456,18 +459,18 @@ impl DepositToYieldAdapter {
             asset_address,
             amount_withdrawn: principal_withdrawn,
             yield_withdrawn,
-        }.publish(&env);
-        
+        }
+        .publish(&env);
+
         (principal_withdrawn, yield_withdrawn)
     }
 
     /// Get all whitelisted protocols
     pub fn get_whitelisted_protocols(env: Env) -> Vec<LendingProtocol> {
         let mut protocols = Vec::new(&env);
-        let counter: u64 = env.storage().instance()
-            .get(&AdapterDataKey::ProtocolCounter)
-            .unwrap_or(0u64);
-        
+        let counter: u64 =
+            env.storage().instance().get(&AdapterDataKey::ProtocolCounter).unwrap_or(0u64);
+
         // Note: In a real implementation, we'd need a way to iterate through all protocols
         // For now, this is a placeholder that would need to be implemented based on storage design
         protocols
@@ -475,21 +478,22 @@ impl DepositToYieldAdapter {
 
     /// Get vault positions
     pub fn get_vault_positions(env: Env, vault_id: u64) -> Vec<YieldPosition> {
-        env.storage().instance()
+        env.storage()
+            .instance()
             .get(&AdapterDataKey::VaultPositions(vault_id))
             .unwrap_or(Vec::new(&env))
     }
 
     /// Get vault yield summary
     pub fn get_vault_yield_summary(env: Env, vault_id: u64) -> VaultYieldSummary {
-        env.storage().instance()
-            .get(&AdapterDataKey::YieldSummary(vault_id))
-            .unwrap_or(VaultYieldSummary {
+        env.storage().instance().get(&AdapterDataKey::YieldSummary(vault_id)).unwrap_or(
+            VaultYieldSummary {
                 vault_id,
                 total_deposited: 0,
                 total_yield_accumulated: 0,
                 active_positions: Vec::new(&env),
-            })
+            },
+        )
     }
 
     /// Pause/unpause the adapter
@@ -501,9 +505,8 @@ impl DepositToYieldAdapter {
     // --- Internal Helper Functions ---
 
     fn require_admin(env: &Env, admin: &Address) {
-        let stored_admin: Address = env.storage().instance()
-            .get(&AdapterDataKey::Admin)
-            .expect("Admin not set");
+        let stored_admin: Address =
+            env.storage().instance().get(&AdapterDataKey::Admin).expect("Admin not set");
         if stored_admin != *admin {
             admin.require_auth();
         }
@@ -516,25 +519,29 @@ impl DepositToYieldAdapter {
     }
 
     fn get_vesting_contract(env: &Env) -> Address {
-        env.storage().instance()
+        env.storage()
+            .instance()
             .get(&AdapterDataKey::VestingContract)
             .expect("Vesting contract not set")
     }
 
     fn get_yield_treasury(env: &Env) -> Address {
-        env.storage().instance()
+        env.storage()
+            .instance()
             .get(&AdapterDataKey::YieldTreasury)
             .expect("Yield treasury not set")
     }
 
     fn get_insurance_treasury(env: &Env) -> Address {
-        env.storage().instance()
+        env.storage()
+            .instance()
             .get(&AdapterDataKey::InsuranceTreasury)
             .expect("Insurance treasury not set")
     }
 
     fn get_whitelisted_protocol(env: &Env, protocol_address: &Address) -> LendingProtocol {
-        env.storage().instance()
+        env.storage()
+            .instance()
             .get(&AdapterDataKey::WhitelistedProtocols(protocol_address.clone()))
             .expect("Protocol not whitelisted")
     }
@@ -547,7 +554,12 @@ impl DepositToYieldAdapter {
         1000000i128 // Placeholder
     }
 
-    fn deposit_to_protocol(env: &Env, protocol_address: &Address, asset_address: &Address, amount: i128) -> i128 {
+    fn deposit_to_protocol(
+        env: &Env,
+        protocol_address: &Address,
+        asset_address: &Address,
+        amount: i128,
+    ) -> i128 {
         // This would call the lending protocol's deposit function
         // For now, return a placeholder - in real implementation, this would be:
         // let protocol_client = LendingProtocolClient::new(env, protocol_address);
@@ -561,13 +573,23 @@ impl DepositToYieldAdapter {
         position.deposited_amount + (position.deposited_amount / 100) // 1% yield placeholder
     }
 
-    fn claim_yield_from_protocol(env: &Env, protocol_address: &Address, asset_address: &Address, amount: i128) -> i128 {
+    fn claim_yield_from_protocol(
+        env: &Env,
+        protocol_address: &Address,
+        asset_address: &Address,
+        amount: i128,
+    ) -> i128 {
         // This would call the lending protocol's claim yield function
         // For now, return the amount as placeholder
         amount
     }
 
-    fn withdraw_from_protocol(env: &Env, protocol_address: &Address, asset_address: &Address, shares: i128) -> (i128, i128) {
+    fn withdraw_from_protocol(
+        env: &Env,
+        protocol_address: &Address,
+        asset_address: &Address,
+        shares: i128,
+    ) -> (i128, i128) {
         // This would call the lending protocol's withdraw function
         // For now, return placeholder values
         let principal = shares; // 1:1 ratio as placeholder
@@ -577,11 +599,13 @@ impl DepositToYieldAdapter {
 
     fn add_or_update_position(env: &Env, vault_id: u64, new_position: YieldPosition) {
         let mut positions = Self::get_vault_positions(env.clone(), vault_id);
-        
+
         // Check if position already exists
         let mut found = false;
         for (i, pos) in positions.iter().enumerate() {
-            if pos.protocol_address == new_position.protocol_address && pos.asset_address == new_position.asset_address {
+            if pos.protocol_address == new_position.protocol_address
+                && pos.asset_address == new_position.asset_address
+            {
                 // Update existing position
                 let updated_position = YieldPosition {
                     protocol_address: new_position.protocol_address.clone(),
@@ -597,22 +621,22 @@ impl DepositToYieldAdapter {
                 break;
             }
         }
-        
+
         if !found {
             // Add new position
             positions.push_back(new_position);
         }
-        
+
         env.storage().instance().set(&AdapterDataKey::VaultPositions(vault_id), &positions);
     }
 
     fn update_yield_summary(env: &Env, vault_id: u64, deposited_change: i128, yield_change: i128) {
         let mut summary = Self::get_vault_yield_summary(env.clone(), vault_id);
-        
+
         summary.total_deposited += deposited_change;
         summary.total_yield_accumulated += yield_change;
         summary.active_positions = Self::get_vault_positions(env.clone(), vault_id);
-        
+
         env.storage().instance().set(&AdapterDataKey::YieldSummary(vault_id), &summary);
     }
 }

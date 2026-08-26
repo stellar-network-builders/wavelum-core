@@ -9,9 +9,7 @@ fn setup() -> (Env, Address, StakingContractClient<'static>, Address, Address) {
     let admin = Address::generate(&env);
 
     let token_admin = Address::generate(&env);
-    let token_addr = env
-        .register_stellar_asset_contract_v2(token_admin.clone())
-        .address();
+    let token_addr = env.register_stellar_asset_contract_v2(token_admin.clone()).address();
 
     client.initialize(&admin, &token_addr);
     (env, contract_id, client, admin, token_addr)
