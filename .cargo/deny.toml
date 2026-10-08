@@ -1,0 +1,42 @@
+# cargo-deny policy (issue #31): license compliance, advisory severity and
+# duplicate-dependency bans for the workspace lockfile.
+# Docs: https://embarkstudios.github.io/cargo-deny/checks/index.html
+
+[graph]
+all-features = false
+
+[advisories]
+version = 2
+db-urls = ["https://github.com/rustsec/advisory-db"]
+# A yanked release in the lockfile is a hard failure.
+yanked = "deny"
+# Current cargo-deny treats every vulnerability advisory as an error.
+# This is stricter than the issue's required high/critical blocking floor.
+
+[licenses]
+# Permitted licenses. Current cargo-deny denies every license that cannot be
+# satisfied by this allow-list, so GPL/AGPL-family licenses remain blocked
+# without legacy deny/default/copyleft policy keys.
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Zlib",
+    "MPL-2.0",
+    "Unicode-3.0",
+    "Unicode-DFS-2016",
+    "CC0-1.0",
+    "0BSD",
+]
+confidence-threshold = 0.8
+# Current cargo-deny has no legacy `unlicensed` policy switch. A dependency
+# without an allowed SPDX expression fails closed unless explicitly clarified.
+
+[bans]
+# Ban duplicate versions of the same crate in the resolved graph.
+multiple-versions = "deny"
+# Reject open-ended ("*") version requirements.
+wildcards = "deny"
