@@ -1,4 +1,7 @@
-use soroban_sdk::{contracttype, contractevent, Address, Vec, Map, String, BytesN, Bytes};
+use soroban_sdk::{contracttype, contractevent, Address, Env, Vec, Map, String, BytesN, Bytes};
+
+use crate::errors::Error;
+use crate::storage::{clear_reentrancy_guard, is_reentrancy_guard_active, set_reentrancy_guard};
 
 #[contracttype]
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -310,6 +313,11 @@ pub struct ZKClaimProof {
     pub commitment_hash: BytesN<32>,
     pub nullifier_hash: BytesN<32>,
     pub merkle_root: BytesN<32>,
+    /// Merkle inclusion proof: sibling hashes from leaf to root
+    pub merkle_proof: Vec<BytesN<32>>,
+    /// Leaf index of the commitment in the Merkle tree (position bits select
+    /// the hashing order at each level)
+    pub position: u32,
     pub proof_data: Bytes, // Placeholder for actual ZK-SNARK proof
 }
 
@@ -811,6 +819,10 @@ pub struct ConfidentialClaimProof {
     pub claimed_amount: i128,
     /// Remaining amount after claim (public output)
     pub remaining_amount: i128,
+    /// Merkle inclusion proof for the commitment
+    pub merkle_proof: Vec<BytesN<32>>,
+    /// Leaf index of the commitment in the Merkle tree
+    pub position: u32,
     /// The actual ZK-SNARK proof (Circom output)
     pub proof_a: BytesN<32>,
     pub proof_b: BytesN<32>,
@@ -980,3 +992,43 @@ pub const MASTER_SCHEDULES: &str = "MASTER_SCHEDULES";
 
 /// Storage key for tracking merged schedule relationships
 pub const MERGED_SCHEDULES: &str = "MERGED_SCHEDULES";
+
+/// Reentrancy guard for entry points that make cross-contract calls.
+///
+/// `ReentrancyGuard::enter(&env)` takes the instance-storage lock and returns a
+/// guard value; the lock is released when the guard is dropped — the Rust
+/// equivalent of `defer` — so every return path (success, `Err`, panic) clears
+/// it. A nested call into a guarded entry point while the lock is held fails
+/// with `Error::ReentrancyDetected`.
+pub struct ReentrancyGuard {
+    env: Env,
+}
+
+impl ReentrancyGuard {
+    /// Take the reentrancy lock; fails with `Error::ReentrancyDetected` if a
+    /// guarded call is already in progress.
+    pub fn enter(e: &Env) -> Result<Self, Error> {
+        if is_reentrancy_guard_active(e) {
+            return Err(Error::ReentrancyDetected);
+        }
+        set_reentrancy_guard(e);
+        Ok(ReentrancyGuard { env: e.clone() })
+    }
+
+    /// Release the lock early. Also runs automatically on `drop`.
+    pub fn exit(self) {
+        clear_reentrancy_guard(&self.env);
+    }
+}
+
+impl Drop for ReentrancyGuard {
+    fn drop(&mut self) {
+        clear_reentrancy_guard(&self.env);
+    }
+}
+
+impl core::fmt::Debug for ReentrancyGuard {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("ReentrancyGuard").finish_non_exhaustive()
+    }
+}

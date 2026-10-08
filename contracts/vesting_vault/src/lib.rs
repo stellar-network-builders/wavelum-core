@@ -16,6 +16,7 @@ pub mod types;
 mod audit_exporter;
 mod emergency;
 pub mod errors;
+mod zk_verifier;
 
 pub use types::*;
 use errors::Error;
@@ -61,6 +62,7 @@ use emergency::{
     AuditorInitialized, AuditorPauseRequest, EmergencyPause, EmergencyPauseTriggered,
     EmergencyVoteCast,
 };
+use zk_verifier::ZKVerifier;
 
 #[contract]
 pub struct VestingVault;
@@ -84,6 +86,10 @@ impl VestingVault {
     /// `KycNotCompleted`, `AddressSanctioned`, `AmlThresholdExceeded`, …).
     pub fn claim(e: Env, user: Address, vesting_id: u32, amount: i128) -> Result<(), Error> {
         user.require_auth();
+
+        // Reentrancy lock — held for the whole call; nested entry into any
+        // guarded claim path while this executes fails with ReentrancyDetected.
+        let _guard = ReentrancyGuard::enter(&e)?;
 
         // ========== INPUT VALIDATION (Issue #13) ==========
         if vesting_id == 0 {
@@ -780,7 +786,10 @@ impl VestingVault {
     /// This function allows users to claim tokens without revealing their identity
     pub fn private_claim(e: Env, zk_proof: ZKClaimProof, nullifier: Nullifier, amount: i128) -> Result<(), Error> {
         // No require_auth() - this is a privacy feature
-        
+
+        // Reentrancy lock — first statement so a nested entry always rejects.
+        let _guard = ReentrancyGuard::enter(&e)?;
+
         // Check if contract is under emergency pause
         if let Some(pause) = get_emergency_pause(&e) {
             if pause.is_active {
@@ -816,7 +825,20 @@ impl VestingVault {
         if !is_valid_merkle_root(&e, &zk_proof.merkle_root) {
             return Err(Error::InvalidInput);
         }
-        
+
+        // Verify the commitment is actually a member of the trusted Merkle
+        // tree — a registered root alone does not prove the commitment was
+        // deposited (issue #6).
+        if !ZKVerifier::verify_merkle_proof(
+            &e,
+            &zk_proof.commitment_hash,
+            &zk_proof.merkle_proof,
+            &zk_proof.merkle_root,
+            zk_proof.position,
+        ) {
+            return Err(Error::InvalidZKProof);
+        }
+
         // TODO: Verify actual ZK-SNARK proof
         // This is a placeholder for the actual ZK proof verification
         // In a full implementation, this would use a ZK verification library
@@ -850,6 +872,12 @@ impl VestingVault {
         Ok(())
     }
     
+    /// Submit a trusted Merkle root (admin-only) — the entry point named by
+    /// the private-claim spec; delegates to `add_merkle_root_admin`.
+    pub fn submit_merkle_root(e: Env, admin: Address, merkle_root: BytesN<32>) -> Result<(), Error> {
+        Self::add_merkle_root_admin(e, admin, merkle_root)
+    }
+
     /// Add a Merkle root for ZK proof verification
     /// This function is called by the admin to add new Merkle roots
     pub fn add_merkle_root_admin(e: Env, admin: Address, merkle_root: BytesN<32>) -> Result<(), Error> {
@@ -968,6 +996,9 @@ impl VestingVault {
     /// This allows users to instantly swap their claimed tokens for USDC in one transaction
     pub fn claim_with_path_payment(e: Env, user: Address, vesting_id: u32, amount: i128, min_destination_amount: Option<i128>) -> Result<(), Error> {
         user.require_auth();
+
+        // Reentrancy lock — the path payment executes a cross-contract call.
+        let _guard = ReentrancyGuard::enter(&e)?;
 
         // INPUT VALIDATION (Issue #13)
         if vesting_id == 0 {
@@ -1257,6 +1288,9 @@ impl VestingVault {
     /// This is the enhanced claim function that handles lock-up periods
     pub fn claim_with_lockup(e: Env, user: Address, vesting_id: u32, amount: i128) -> Result<(), Error> {
         user.require_auth();
+
+        // Reentrancy lock — lockup claims call the lockup token contract.
+        let _guard = ReentrancyGuard::enter(&e)?;
 
         // INPUT VALIDATION (Issue #13)
         if vesting_id == 0 {
