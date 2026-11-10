@@ -907,20 +907,28 @@ pub struct ForceWithdrawalExecuted {
 
 // ========== ISSUE #297: Max-Allocation-Sanity-Check ==========
 
+/// Event emitted when the maximum token allocation limit is updated by admin.
 #[contractevent]
 #[derive(Clone)]
 pub struct MaxAllocationLimitSet {
+    /// New maximum allocation limit in base units
     pub max_limit: i128,
+    /// Administrator address that configured the limit
     pub set_by: Address,
+    /// Timestamp when the limit was updated
     pub timestamp: u64,
 }
 
+/// Event emitted when a schedule creation or allocation exceeds the allowed ceiling.
 #[contractevent]
 #[derive(Clone)]
 pub struct AllocationLimitExceeded {
+    /// Attempted allocation amount that violated the policy
     #[topic]
     pub attempted_allocation: i128,
+    /// Maximum allowable limit at the time of rejection
     pub max_limit: i128,
+    /// Timestamp of the failed allocation attempt
     pub rejected_at: u64,
 }
 

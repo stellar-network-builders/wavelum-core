@@ -1,11 +1,14 @@
 use soroban_sdk::contracterror;
 
+/// Error codes returned by the vesting vault smart contract operations.
 #[contracterror]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 #[repr(u32)]
 pub enum Error {
     // 🔐 General (100s)
+    /// Caller is not authorized to invoke this function or perform this action
     Unauthorized = 100,
+    /// Provided input parameter failed validation checks
     InvalidInput = 101,
     /// #13: Address is the zero address -- not allowed as a participant
     ZeroAddress = 102,
@@ -19,24 +22,41 @@ pub enum Error {
     TimestampTooLarge = 106,
 
     // ⏳ Vesting (200s)
+    /// Vesting schedule not found for the requested ID or user
     VestingNotFound = 200,
+    /// Vesting vault was not found
     VaultNotFound = 201,
+    /// Contract or vault has already been initialized
     AlreadyInitialized = 202,
+    /// Contract or vault has not been initialized yet
     NotInitialized = 203,
+    /// Contract operations are currently paused
     ContractPaused = 204,
+    /// Cliff period has not yet been reached
     CliffNotReached = 205,
+    /// No vested tokens available to claim at the current timestamp
     NothingToClaim = 206,
+    /// All vested tokens have already been fully claimed
     AlreadyFullyClaimed = 207,
+    /// Vesting vault has been revoked
     VaultRevoked = 208,
+    /// Vesting vault has been frozen
     VaultFrozen = 209,
+    /// Invalid vesting schedule parameters provided
     InvalidSchedule = 210,
+    /// Associated milestone has not been completed
     MilestoneNotCompleted = 211,
+    /// Amount provided is invalid or exceeds claimable limits
     InvalidAmount = 212,
+    /// Vault has not been properly initialized
     VaultNotInitialized = 213,
 
     // 💰 Financial (300s)
+    /// Insufficient balance to execute operation
     InsufficientBalance = 300,
+    /// Insufficient funds in vault or contract escrow
     InsufficientFunds = 301,
+    /// Token transfer operation failed
     TransferFailed = 302,
 
     // 🧪 LST Auto-Compounding (310s)
@@ -62,28 +82,49 @@ pub enum Error {
     ExchangeRateManipulationSuspected = 319,
 
     // 📜 Compliance (400s)
+    /// KYC verification process has not been completed
     KycNotCompleted = 400,
+    /// KYC verification credentials have expired
     KycExpired = 401,
+    /// Account or recipient address is listed on a sanctions registry
     AddressSanctioned = 402,
+    /// Account resides in a restricted regulatory jurisdiction
     JurisdictionRestricted = 403,
+    /// Required legal disclosure signature is missing
     LegalSignatureMissing = 404,
+    /// Submitted legal signature failed cryptographic validation
     LegalSignatureInvalid = 405,
+    /// Automated regulatory compliance checks failed
     ComplianceCheckFailed = 406,
+    /// Transaction amount exceeds anti-money laundering threshold
     AmlThresholdExceeded = 407,
+    /// Compliance risk scoring evaluation is above permissible threshold
     RiskRatingTooHigh = 408,
+    /// Identity or entity document verification verification failed
     DocumentVerificationFailed = 409,
+    /// Investor accreditation qualification is invalid or unconfirmed
     AccreditationStatusInvalid = 410,
+    /// Mandatory tax withholding or reporting validation failed
     TaxComplianceFailed = 411,
     /// Tax liquidation (swap/transfer) failed during claim processing
     TaxLiquidationFailed = 421,
+    /// Regulatory compliance freeze or block is currently active
     RegulatoryBlockActive = 412,
+    /// Beneficiary address has not been approved on the compliance whitelist
     WhitelistNotApproved = 413,
+    /// Address violates internal or regulatory exclusion list
     BlacklistViolation = 414,
+    /// Access attempted from a prohibited geographic region
     GeofencingRestriction = 415,
+    /// Identity verification validity window has expired
     IdentityVerificationExpired = 416,
+    /// Proof for legitimate source of funds has not been verified
     SourceOfFundsNotVerified = 417,
+    /// Beneficial ownership identity has not been verified
     BeneficialOwnerNotVerified = 418,
+    /// Account flagged as a Politically Exposed Person requiring enhanced due diligence
     PoliticallyExposedPerson = 419,
+    /// Prohibited match detected on international sanctions watchlists
     SanctionsListHit = 420,
 
     // 🚨 Security (450s)
@@ -91,6 +132,7 @@ pub enum Error {
     StreamPaused = 450,
 
     // ⚙️ System (900s)
+    /// Generic integer overflow encountered during numerical processing
     Overflow = 900,
     /// #9: Integer arithmetic overflow detected in financial computation
     ArithmeticOverflow = 901,
@@ -100,13 +142,19 @@ pub enum Error {
     // 🗳️ Governance / DAO (500s)
     /// #223: No unvested balance found for the queried address
     NoUnvestedBalance = 500,
+    /// Account has already cast a vote for this proposal
     AlreadyVoted = 501,
+    /// Proposal voting window has already concluded
     VotingPeriodEnded = 502,
+    /// Quorum participation threshold was not achieved
     QuorumNotMet = 503,
     /// Timelock period has not yet elapsed
     TimelockNotElapsed = 504,
+    /// Path payment routing parameters have not been configured
     PathPaymentNotConfigured = 505,
+    /// Path payment conversion feature is currently disabled
     PathPaymentDisabled = 506,
+    /// Insufficient liquidity in liquidity pools to complete path payment
     InsufficientLiquidity = 507,
 
     // 🔑 Admin Recovery (600s)

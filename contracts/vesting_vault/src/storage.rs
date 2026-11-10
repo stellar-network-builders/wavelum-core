@@ -1,57 +1,79 @@
 use soroban_sdk::{Env, Vec, Address, Map, BytesN};
 use crate::types::{ClaimEvent, AuthorizedPayoutAddress, AddressWhitelistRequest, Nullifier, Commitment, PathPaymentConfig, PathPaymentClaimEvent, LockupConfig, BeneficiaryReassignment, VetoVote, TokenSupplyInfo, LSTConfig, ConfidentialGrant, MasterViewingKey, StreamPause, MasterSchedule};
 
+/// Storage key for recording the vector of user claim history events.
 pub const CLAIM_HISTORY: &str = "CLAIM_HISTORY";
+/// Storage key for mapping beneficiaries to authorized payout destination addresses.
 pub const AUTHORIZED_PAYOUT_ADDRESS: &str = "AUTHORIZED_PAYOUT_ADDRESS";
+/// Storage key for pending payout address modification requests.
 pub const PENDING_ADDRESS_REQUEST: &str = "PENDING_ADDRESS_REQUEST";
 
-// Stream pause storage keys for suspicious activity detection
+/// Storage key for active stream pause state records.
 pub const STREAM_PAUSES: &str = "STREAM_PAUSES";
+/// Storage key for historical audit logs of stream pauses.
 pub const STREAM_PAUSE_HISTORY: &str = "STREAM_PAUSE_HISTORY";
 
-// Emergency pause storage keys
+/// Storage key for registered emergency auditor addresses.
 pub const AUDITORS: &str = "AUDITORS";
+/// Storage key for pending auditor pause proposals.
 pub const AUDITOR_PAUSE_REQUESTS: &str = "AUDITOR_PAUSE_REQUESTS";
+/// Storage key for the active emergency pause state.
 pub const EMERGENCY_PAUSE: &str = "EMERGENCY_PAUSE";
 
-// Cross-project reputation storage keys
+/// Storage key for the cross-project reputation bridge contract address.
 pub const REPUTATION_BRIDGE_CONTRACT: &str = "REPUTATION_BRIDGE_CONTRACT";
+/// Storage key tracking applied reputation bonuses by address.
 pub const REPUTATION_BONUS_APPLIED: &str = "REPUTATION_BONUS_APPLIED";
 
-// Milestone vesting storage keys
+/// Storage key for milestone vesting configuration settings.
 pub const MILESTONE_CONFIGS: &str = "MILESTONE_CONFIGS";
+/// Storage key for milestone execution and completion statuses.
 pub const MILESTONE_STATUS: &str = "MILESTONE_STATUS";
 
-// Zero-Knowledge Privacy Claims storage keys
+/// Storage key for spent Zero-Knowledge nullifier records.
 pub const NULLIFIER_MAP: &str = "NULLIFIER_MAP";
+/// Storage key mapping commitment hashes to commitment details.
 pub const COMMITMENT_STORAGE: &str = "COMMITMENT_STORAGE";
+/// Storage key recording privacy claim execution history.
 pub const PRIVACY_CLAIM_HISTORY: &str = "PRIVACY_CLAIM_HISTORY";
+/// Storage key for the list of verified Merkle tree roots.
 pub const MERKLE_ROOTS: &str = "MERKLE_ROOTS";
 
-// Stellar Horizon Path Payment Claim storage keys
+/// Storage key for Stellar Horizon path payment routing configuration.
 pub const PATH_PAYMENT_CONFIG: &str = "PATH_PAYMENT_CONFIG";
+/// Storage key for recording history of claims settled via path payments.
 pub const PATH_PAYMENT_CLAIM_HISTORY: &str = "PATH_PAYMENT_CLAIM_HISTORY";
 
-// Lock-up period storage keys
+/// Storage key for secondary post-claim lock-up configurations.
 pub const LOCKUP_CONFIGS: &str = "LOCKUP_CONFIGS";
 
-// Beneficiary reassignment and governance veto storage keys
+/// Storage key for beneficiary reassignment proposal requests.
 pub const BENEFICIARY_REASSIGNMENTS: &str = "BENEFICIARY_REASSIGNMENTS";
+/// Storage key recording governance veto votes for reassignment proposals.
 pub const VETO_VOTES: &str = "VETO_VOTES";
+/// Storage key storing governance token supply information.
 pub const TOKEN_SUPPLY_INFO: &str = "TOKEN_SUPPLY_INFO";
+/// Storage key for incremental beneficiary reassignment identifier sequence.
 pub const REASSIGNMENT_COUNTER: &str = "REASSIGNMENT_COUNTER";
+/// Storage key storing percentage threshold required to pass a governance veto.
 pub const GOVERNANCE_VETO_THRESHOLD: &str = "GOVERNANCE_VETO_THRESHOLD"; // Percentage (e.g., 5 for 5%)
+/// Storage key for Liquid Staking Token (LST) configurations.
 pub const LST_CONFIGS: &str = "LST_CONFIGS";
 
-// LST Auto-Compounding storage keys (Issue #154)
+/// Storage key for total LST liquidity pool share balances.
 pub const LST_POOL_SHARES: &str = "LST_POOL_SHARES";
+/// Storage key for individual user LST share holdings.
 pub const USER_LST_SHARES: &str = "USER_LST_SHARES";
+/// Storage key for unbonding requests pending lockup expiration.
 pub const UNBONDING_REQUESTS: &str = "UNBONDING_REQUESTS";
+/// Storage key for FIFO unbonding queue.
 pub const UNBONDING_QUEUE: &str = "UNBONDING_QUEUE";
 
-// Protocol Sunset and Migration storage keys (Issue #280)
+/// Storage key for protocol sunset timelock and freeze state.
 pub const PROTOCOL_SUNSET: &str = "PROTOCOL_SUNSET";
+/// Storage key for contract migration payload bytes.
 pub const MIGRATION_PAYLOADS: &str = "MIGRATION_PAYLOADS";
+/// Storage key tracking authorized relayer migration executions.
 pub const RELAYER_MIGRATIONS: &str = "RELAYER_MIGRATIONS";
 
 // 48 hours in seconds

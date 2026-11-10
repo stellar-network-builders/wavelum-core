@@ -776,8 +776,22 @@ impl VestingVault {
         Ok(())
     }
     
-    /// Execute a private claim using ZK proof
-    /// This function allows users to claim tokens without revealing their identity
+    /// Execute a private claim using Zero-Knowledge proofs.
+    ///
+    /// Allows a beneficiary to claim vested tokens without revealing their public address on-chain.
+    /// Validates the ZK SNARK proof against the active Merkle roots and verifies that the
+    /// nullifier has not been spent to prevent double-spending or replay attacks.
+    ///
+    /// # Parameters
+    /// - `e`         - The Soroban environment context.
+    /// - `zk_proof`  - Zero-Knowledge cryptographic proof validating vesting rights.
+    /// - `nullifier` - Unique hash preventing replay attacks of the claim.
+    /// - `amount`    - Amount of vested tokens requested to claim.
+    ///
+    /// # Errors
+    /// - Returns [`Error::ContractPaused`] if emergency pause is currently active.
+    /// - Returns [`Error::AlreadyInitialized`] if the nullifier has already been claimed.
+    /// - Returns [`Error::InvalidZKProof`] if cryptographic verification against Merkle roots fails.
     pub fn private_claim(e: Env, zk_proof: ZKClaimProof, nullifier: Nullifier, amount: i128) -> Result<(), Error> {
         // No require_auth() - this is a privacy feature
         

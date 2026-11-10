@@ -5,3 +5,5 @@ target
 .soroban
 .stellar
 contracts/invoke_results.txt
+config.bat
+node_modules
